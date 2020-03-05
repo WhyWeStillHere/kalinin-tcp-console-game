@@ -1,2 +1,2 @@
-# kalinin-tcp-console-game
-Console game with network interaction
+### The Labyrinth
+Conlose multiplayer game with network communication features
