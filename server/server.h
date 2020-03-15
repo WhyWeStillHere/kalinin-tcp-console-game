@@ -36,7 +36,9 @@ public:
 private:
   int socket_ = -1;
   static volatile sig_atomic_t exit_flag_;
+  ServerStartUpType type_;
   void ConfigureDaemon();
+  void OpenLogs();
   static void ExitHandler(int signum);
   void ConfigureSignals();
 };

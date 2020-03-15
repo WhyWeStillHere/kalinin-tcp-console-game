@@ -3,10 +3,11 @@
 
 volatile sig_atomic_t GameServer::exit_flag_ = 0;
 
-GameServer::GameServer(const ServerStartUpType type) {
+GameServer::GameServer(const ServerStartUpType type) : type_(type) {
   if (type == DAEMON) {
-    GameServer::ConfigureDaemon();
+    ConfigureDaemon();
   }
+  OpenLogs();
   ConfigureSignals();
 }
 
@@ -41,6 +42,17 @@ void GameServer::ConfigureSignals() {
   ret = sigaction(SIGINT, &action_int, NULL);
   if (ret < 0) {
     syslog(LOG_NOTICE, "Error while sigaction(): %s", strerror(errno));
+  }
+}
+
+void GameServer::OpenLogs() {
+  // Open the log file
+  if (type_ == DAEMON) {
+    openlog ("Server daemon", LOG_PID, LOG_DAEMON);
+    syslog (LOG_NOTICE, "Server started as daemon");
+  } else if (type_ == PROGRAM) {
+    openlog ("Server program", LOG_PID, LOG_DAEMON);
+    syslog (LOG_NOTICE, "Server started as program");
   }
 }
 
@@ -82,9 +94,6 @@ void GameServer::ConfigureDaemon()
   close(STDOUT_FILENO);
   close(STDERR_FILENO);
 
-  // Open the log file
-  openlog ("Server daemon", LOG_PID, LOG_DAEMON);
-  syslog (LOG_NOTICE, "Server daemon started");
 }
 
 void GameServer::Init(const char* ip_string, const int port) {
