@@ -1,23 +1,42 @@
 #pragma once
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
+#include <unordered_map>
 #include <csignal>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <netinet/in.h>
 #include <stdexcept>
+#include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <syslog.h>
 #include <unistd.h>
+#include <unordered_map>
+#include <vector>
+#include <pthread.h>
 
+#include "../lib/tcp_connection.h"
+#include "../lib/room_info.h"
+#include "../lib/tcp_utilities.h"
+#include "../lib/send_command.h"
+#include "room.h"
 #include "io_context.h"
 
 enum ServerStartUpType {
   DAEMON,
   PROGRAM
+};
+
+enum ManagerStates {
+  START,
+  SENDING_ROOMS,
+  WAITING_COMMAND,
+  ASKING_LOGIN_SIZE,
+  ASKING_LOGIN,
+  JOINING_ROOM,
+  CREATING_ROOM
 };
 
 class GameServer {
@@ -34,9 +53,22 @@ public:
   void Init(const char* ip_string, const int port);
 
 private:
-  int socket_ = -1;
-  static volatile sig_atomic_t exit_flag_;
   void ConfigureDaemon();
+  void CloseConnection(int socket_fd);
   static void ExitHandler(int signum);
   void ConfigureSignals();
+  void ManageEvents(int event_num, epoll_event* events);
+  void AddNewConnection();
+  void ManageState(int fd);
+  void ConnectToRoom(int fd);
+
+  void CreateRoom(int fd);
+  static void* RoomTread(void* arg);
+
+  int socket_ = -1;
+  uint64_t ID = 1;
+  static volatile sig_atomic_t exit_flag_;
+  std::unordered_map<int, TcpConnection<ManagerStates> > connections_;
+  std::unordered_map<int, RoomInfo> rooms_;
+  IOContext io_context_;
 };
