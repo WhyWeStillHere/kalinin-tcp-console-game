@@ -11,6 +11,7 @@
 #include <syslog.h>
 #include <unistd.h>
 
+#include "interface_manager.h"
 
 class Client {
 public:
@@ -22,11 +23,12 @@ public:
 
   void Init();
   void Connect(const char* ip_string, const int port);
-  void Run();
+  void Run(const char* ip_string, const int port);
 
 private:
   int socket_ = -1;
   static volatile sig_atomic_t exit_flag_;
   void ConfigureSignals();
   static void ExitHandler(int signum);
+  InterfaceManager interface_manager_;
 };

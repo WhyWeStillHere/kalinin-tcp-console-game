@@ -26,7 +26,11 @@ Client::~Client() {
 
 
 // TODO: ERROR PARSING
-void Client::Run() {
+void Client::Run(const char* ip_string, const int port) {
+
+  interface_manager_.Start();
+  return;
+
   std::vector<RoomInfo> rooms_info;
   uint32_t room_number;
   std::cout << "Prepare for read\n";

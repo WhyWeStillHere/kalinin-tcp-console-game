@@ -11,7 +11,6 @@ int main(int argc, char* argv[]) {
 
   Client client;
   client.Init();
-  client.Connect(ip_str, port);
-  client.Run();
+  client.Run(ip_str, port);
   return 0;
 }
