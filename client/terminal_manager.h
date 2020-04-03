@@ -7,7 +7,6 @@
 #include <unistd.h>
 #include <termios.h>
 
-#define CTRL_KEY(k) ((k) & 0x1f) // K & 00011111
 
 class TerminalManager {
 public:
@@ -19,23 +18,30 @@ public:
   void ClearScreen();
   int GetWindowSize(int& rows, int& cols);
 
-  char ReadKey();
+  int ReadKey();
+  char ReadKeyBlock();
   void ClearInput();
 
   void HideCursor();
   void ShowCursor();
+  // Right-left corner by default
+  void SetCursor(int row = 0, int col = 0); // Absolute position
+  void MoveCursorUp(int steps = 1);
+  void MoveCursorDown(int steps = 1);
+  void MoveCursorLeft(int steps = 1);
+  void MoveCursorRight(int steps = 1);
+  void SaveCursor();
+  void RestoreCursor();
 
 private:
-  void EmptyScreen();
-
-  // Right-left corner by default
-  void MoveCursor(int line = 0, int column = 0); // Absolute position
 
   int GetCursorPosition(int& rows, int& cols);
   int GetWindowSize();
   void EnableRawMode();
   void DisableRawMode();
+
   void Die(const char* s);
+  bool Write(const char* s, int str_len, bool die = false);
 
   int terminal_rows_;
   int terminal_cols_;

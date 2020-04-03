@@ -13,20 +13,29 @@ void TerminalManager::Init() {
 }
 
 TerminalManager::~TerminalManager() {
+  ClearScreen();
+  SetCursor();
+
   DisableRawMode();
 }
 
-void TerminalManager::ClearScreen() {
-  EmptyScreen();
-  MoveCursor();
-}
-
 void TerminalManager::Draw(char *buffer, std::size_t buffer_size) {
+  SaveCursor();
   ClearScreen();
-  write(STDOUT_FILENO, buffer, buffer_size);
+  SetCursor();
+  Write(buffer, buffer_size, true);
+  RestoreCursor();
 }
 
-char TerminalManager::ReadKey() {
+void TerminalManager::SaveCursor() {
+  Write("\x1b[s", 3, true);
+}
+
+void TerminalManager::RestoreCursor() {
+  Write("\x1b[u", 3, true);
+}
+
+char TerminalManager::ReadKeyBlock() {
   int nread;
   char c;
   while ((nread = read(STDIN_FILENO, &c, 1)) != 1) {
@@ -34,6 +43,20 @@ char TerminalManager::ReadKey() {
       Die("read");
     }
   }
+  return c;
+}
+
+int TerminalManager::ReadKey() {
+  int nread;
+  char c;
+  nread = read(STDIN_FILENO, &c, 1);
+  if (nread == -1 && errno != EAGAIN) {
+    Die("read");
+  }
+  if (errno == EAGAIN) {
+    return -1;
+  }
+  return c;
 }
 
 void TerminalManager::ClearInput() {
@@ -59,8 +82,6 @@ void TerminalManager::EnableRawMode() {
   raw.c_cc[VMIN] = 0;
   raw.c_cc[VTIME] = 1; // Read timeout
 
-  tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
-
   if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == -1) {
     Die("tcsetattr");
   }
@@ -73,38 +94,49 @@ void TerminalManager::DisableRawMode() {
 }
 
 void TerminalManager::HideCursor() {
-  write(STDOUT_FILENO, "\x1b[?25l", 6);
+  Write("\x1b[?25l", 6, true);
 }
 
 void TerminalManager::ShowCursor() {
-  write(STDOUT_FILENO, "\x1b[?25h", 6);
+  Write("\x1b[?25h", 6, true);
 }
 
-void TerminalManager::EmptyScreen() {
-  write(STDOUT_FILENO, "\x1b[2J", 4);
-}
-
-void TerminalManager::MoveCursor(int line, int column) {
-  char str[32];
-  sprintf(str, "\x1b[%d;%dH", line, column);
-  write(STDOUT_FILENO, str, strlen(str));
+void TerminalManager::ClearScreen() {
+  Write("\x1b[2J", 4, true);
 }
 
 void TerminalManager::Die(const char* str) {
-  EmptyScreen();
-  MoveCursor();
+  ClearScreen();
+  SetCursor();
 
   perror(str);
   throw std::system_error(make_error_code(std::errc(errno)));
 }
 
+bool TerminalManager::Write(const char *s, const int str_len, const bool die) {
+  if (write(STDOUT_FILENO, s, str_len) != str_len) {
+    if (die) {
+      Die("write");
+    } else {
+      return false;
+    }
+  }
+  return true;
+}
+
 int TerminalManager::GetCursorPosition(int& rows, int& cols) {
   char buf[32];
   unsigned int i = 0;
-  if (write(STDOUT_FILENO, "\x1b[6n", 4) != 4) return -1;
+  if (Write("\x1b[6n", 4)) {
+    return -1;
+  }
   while (i < sizeof(buf) - 1) {
-    if (read(STDIN_FILENO, &buf[i], 1) != 1) break;
-    if (buf[i] == 'R') break;
+    if (read(STDIN_FILENO, &buf[i], 1) != 1) {
+      break;
+    }
+    if (buf[i] == 'R') {
+      break;
+    }
     ++i;
   }
   buf[i] = '\0';
@@ -122,7 +154,7 @@ int TerminalManager::GetCursorPosition(int& rows, int& cols) {
 int TerminalManager::GetWindowSize() {
   winsize ws;
   if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
-    if (write(STDOUT_FILENO, "\x1b[999C\x1b[999B", 12) != 12) {
+    if (Write("\x1b[999C\x1b[999B", 12)) {
       return -1;
     }
     return GetCursorPosition(terminal_rows_, terminal_cols_);
@@ -137,4 +169,34 @@ int TerminalManager::GetWindowSize(int& rows, int& cols) {
   GetWindowSize();
   rows = terminal_rows_;
   cols = terminal_cols_;
+}
+
+void TerminalManager::SetCursor(const int row, const int col) {
+  char str[32];
+  sprintf(str, "\x1b[%d;%dH", row, col);
+  Write(str, strlen(str), true);
+}
+
+void TerminalManager::MoveCursorUp(const int steps) {
+  char str[32];
+  sprintf(str, "\x1b[%dA", steps);
+  Write(str, strlen(str), true);
+}
+
+void TerminalManager::MoveCursorDown(const int steps) {
+  char str[32];
+  sprintf(str, "\x1b[%dB", steps);
+  Write(str, strlen(str), true);
+}
+
+void TerminalManager::MoveCursorLeft(const int steps) {
+  char str[32];
+  sprintf(str, "\x1b[%dD", steps);
+  Write(str, strlen(str), true);
+}
+
+void TerminalManager::MoveCursorRight(const int steps) {
+  char str[32];
+  sprintf(str, "\x1b[%dC", steps);
+  Write(str, strlen(str), true);
 }

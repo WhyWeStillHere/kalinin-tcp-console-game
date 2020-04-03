@@ -27,8 +27,40 @@ Client::~Client() {
 
 // TODO: ERROR PARSING
 void Client::Run(const char* ip_string, const int port) {
+  try {
+    interface_manager_.Start();
+    std::string login = interface_manager_.AskLogin();
 
-  interface_manager_.Start();
+    //Connect(ip_string, port);
+
+    std::vector<RoomInfo> rooms_info;
+
+    RoomInfo room;
+    room.id = 0;
+    room.participant_num = 2;
+    rooms_info.push_back(room);
+    room.id = 1;
+    room.participant_num = 100;
+    rooms_info.push_back(room);
+
+    while (1) {
+      CommandToManager command = interface_manager_.MainServerPage(rooms_info);
+      if (command == JOIN_ROOM) {
+        int room_id = interface_manager_.GetRoomId();
+      }
+
+      while(1) {
+
+      }
+
+    }
+
+  } catch (int err_code) {
+    if (err_code == -1) {
+      return;
+    }
+    throw std::current_exception();
+  }
   return;
 
   std::vector<RoomInfo> rooms_info;

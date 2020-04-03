@@ -8,7 +8,6 @@ Painter::Painter(TerminalManager& terminal, const int rows, const int cols)
 
 void Painter::ApplyDrawing() {
   terminal_.Draw(screen_buffer_.Data(), screen_buffer_.Size());
-  terminal_.HideCursor();
 }
 
 void Painter::Set(const int x, const int y, const char c) {
@@ -89,29 +88,45 @@ void Painter::DrawRectangle(const double x1_rel, const double y1_rel,
 }
 
 void Painter::Remove(int x, int y) {
-  if (x < 0 || x >= cols_ || y < 0 || y >= rows_) {
-    throw std::logic_error("Incorrect screen buffer point");
-  }
   Set(x, y, ' ');
 }
 
-void Painter::DrawString(int x, int y, char *str, std::size_t str_size) {
+void Painter::DrawString(int x, int y, const char *str, std::size_t str_size) {
   for (int i = x, k = 0; k < str_size; ++i, ++k) {
     Set(i, y, str[k]);
   }
 }
 
-void Painter::DrawString(double x_rel, double y_rel, char *str, std::size_t str_size) {
+void Painter::DrawString(double x_rel, double y_rel, const char *str, std::size_t str_size) {
   DrawString(GetHorizontalCoord(x_rel), GetVerticalCoord(y_rel),
       str, str_size);
 }
 
-void Painter::DrawStringCenter(int x, int y, char *str, std::size_t str_size) {
+void Painter::DrawStringCenter(int x, int y, const char *str, std::size_t str_size) {
   int offset = str_size / 2;
   DrawString(x - offset, y, str, str_size);
 }
 
-void Painter::DrawStringCenter(double x_rel, double y_rel, char *str, std::size_t str_size) {
+void Painter::RemoveString(int x, int y, std::size_t str_size) {
+  for (int i = x, k = 0; k < str_size; ++i, ++k) {
+    Remove(i, y);
+  }
+}
+
+void Painter::RemoveString(double x_rel, double y_rel, std::size_t str_size) {
+  RemoveString(GetHorizontalCoord(x_rel), GetVerticalCoord(y_rel), str_size);
+}
+
+void Painter::RemoveStringCenter(int x, int y, std::size_t str_size) {
+  int offset = str_size / 2;
+  RemoveString(x - offset, y, str_size);
+}
+
+void Painter::RemoveStringCenter(double x_rel, double y_rel, std::size_t str_size) {
+  RemoveStringCenter(GetHorizontalCoord(x_rel), GetVerticalCoord(y_rel), str_size);
+}
+
+void Painter::DrawStringCenter(double x_rel, double y_rel, const char *str, std::size_t str_size) {
   DrawStringCenter(GetHorizontalCoord(x_rel), GetVerticalCoord(y_rel), str, str_size);
 }
 
@@ -121,4 +136,77 @@ int Painter::GetHorizontalCoord(double x_rel) {
 
 int Painter::GetVerticalCoord(double y_rel) {
   return y_rel * rows_;
+}
+
+void Painter::ClearScreen() {
+  for (int x = 0; x < cols_; ++x) {
+    for (int y = 0; y < rows_; ++y) {
+      Remove(x, y);
+    }
+  }
+}
+
+void Painter::MoveCursor(const int x, const int y) {
+  cursor_.x = x;
+  cursor_.y = y;
+  terminal_.SetCursor(y + 1, x + 1);
+}
+
+void Painter::MoveCursor(const double x_rel, const double y_rel) {
+  MoveCursor(GetHorizontalCoord(x_rel), GetVerticalCoord(y_rel));
+}
+
+void Painter::ShowCursor() {
+  cursor_.is_visible = true;
+  terminal_.ShowCursor();
+}
+
+void Painter::HideCursor() {
+  cursor_.is_visible = false;
+  terminal_.HideCursor();
+}
+
+void Painter::MoveCursor(Cursor::Direction direction) {
+  switch (direction) {
+    case Cursor::Direction::UP:
+      if (cursor_.y >= 1) {
+        --cursor_.y;
+      }
+      terminal_.MoveCursorUp();
+      break;
+    case Cursor::Direction::DOWN:
+      if (cursor_.y + 1 <= rows_) {
+        ++cursor_.y;
+      }
+      terminal_.MoveCursorDown();
+      break;
+  case Cursor::Direction::LEFT:
+    if (cursor_.x >= 1) {
+      --cursor_.x;
+    }
+    terminal_.MoveCursorLeft();
+    break;
+  case Cursor::Direction::RIGHT:
+    if (cursor_.x + 1 <= cols_) {
+      ++cursor_.x;
+    }
+    terminal_.MoveCursorRight();
+    break;
+  }
+}
+
+void Painter::Set(const char c) {
+  Set(cursor_.x, cursor_.y, c);
+}
+
+char Painter::Get() {
+  return Get(cursor_.x, cursor_.y);
+}
+
+void Painter::Remove() {
+  Remove(cursor_.x, cursor_.y);
+}
+
+Cursor Painter::GetCursor() {
+  return cursor_;
 }
