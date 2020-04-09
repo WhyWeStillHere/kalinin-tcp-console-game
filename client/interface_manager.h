@@ -9,12 +9,15 @@ public:
 
   void Start();
   std::string AskLogin(int MAX_LOGIN_SIZE = 32);
-  CommandToManager MainServerPage(std::vector<RoomInfo>& room_list);
+  CommandToManager MainServerPage(std::vector<RoomInfo>& room_list,
+      const std::string& err = "");
   int GetRoomId();
+  void LobbyPage(std::vector<PlayerInfo>& player_list);
+
 
 private:
   std::string ReadWriteCursor(int MAX_INPUT_SIZE = -1, bool digit_fl = true,
-      bool letter_fl = true, ScreenScene scene = UNKNOWN_SCREEN);
+      bool letter_fl = true);
 
   TerminalManager terminal_;
   OutputInterface out_interface_;

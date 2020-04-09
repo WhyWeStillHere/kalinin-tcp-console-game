@@ -117,7 +117,8 @@ void OutputInterface::DrawRoomList(std::vector<RoomInfo>& room_list) {
   painter_->ApplyDrawing();
 }
 
-void OutputInterface::DrawList(const int x1, const int y1, const int x2, const int y2, std::vector<std::string>& lines) {
+void OutputInterface::DrawList(const int x1, const int y1, const int x2, const int y2,
+    const std::vector<std::string>& lines) {
   int y_shift = 0;
   for (const auto& line: lines) {
     painter_->DrawRectangle(x1, y1 + y_shift, x2, y1 + y_shift + 2);
@@ -126,7 +127,8 @@ void OutputInterface::DrawList(const int x1, const int y1, const int x2, const i
   }
 }
 
-void OutputInterface::DrawRooms(const int x1, const int y1, const int x2, const int y2, std::vector<RoomInfo> &room_list) {
+void OutputInterface::DrawRooms(const int x1, const int y1, const int x2,
+    const int y2, const std::vector<RoomInfo> &room_list) {
   std::vector<std::string> lines;
   for (const auto& room: room_list) {
     std::ostringstream ss;
@@ -149,9 +151,9 @@ void OutputInterface::ReadRoomId() {
   painter_->ApplyDrawing();
 }
 
-void OutputInterface::WriteError(const std::string &error, ScreenScene screen) {
+void OutputInterface::WriteError(const std::string &error) {
   std::string out = "Error: " + error;
-  switch (screen) {
+  switch (current_scene_) {
   case LOGIN_SCREEN:
     painter_->DrawStringCenter(0.5, 0.2, out.data(), out.size());
     painter_->ApplyDrawing();
@@ -163,4 +165,60 @@ void OutputInterface::WriteError(const std::string &error, ScreenScene screen) {
     painter_->RemoveStringCenter(0.2, 0.9, out.size());
     break;
   }
+}
+
+void OutputInterface::DrawLobbyScreen(const std::vector<PlayerInfo>& player_list) {
+  if (player_list.empty()) {
+    throw std::logic_error("Incorrect player list");
+  }
+  painter_->HideCursor();
+  painter_->ClearScreen();
+
+  char str_buffer[128];
+
+  int x_max = painter_->GetHorizontalCoord(0.999);
+  int y_max = painter_->GetVerticalCoord(0.999);
+
+  int cross_vert_line = painter_->GetHorizontalCoord(0.4);
+  int cross_horizontal_line = painter_->GetVerticalCoord(0.66);
+
+  painter_->DrawHorizontalLine(cross_horizontal_line, cross_vert_line, x_max, '_');
+  painter_->DrawHorizontalLine(cross_horizontal_line + 1, cross_vert_line, x_max, '_');
+  painter_->DrawVerticalLine(cross_vert_line, 0, y_max, '|');
+
+
+  painter_->DrawRectangle(0, 0, cross_vert_line, 2);
+  sprintf(str_buffer, " Host: %s", player_list.front().login.data());
+  painter_->DrawString(1, 1, str_buffer, strlen(str_buffer));
+
+  // Draw player list
+  painter_->DrawRectangle(0, 2, cross_vert_line, 4, '|', '=');
+  sprintf(str_buffer, " Current players: ");
+  painter_->DrawString(1, 3, str_buffer, strlen(str_buffer));
+  DrawPlayers(0, 4, cross_vert_line, y_max, player_list);
+
+  painter_->DrawFrame();
+
+  painter_->ApplyDrawing();
+
+}
+
+void OutputInterface::DrawPlayers(const int x1, const int y1, const int x2,
+                                const int y2, const std::vector<PlayerInfo>& player_list) {
+  std::vector<std::string> lines;
+  for (int i = 1; i < player_list.size(); ++i) {
+    std::ostringstream ss;
+    ss << " Player " << player_list[i].login;
+    lines.push_back(ss.str());
+  }
+
+  DrawList(x1, y1, x2, y2, lines);
+}
+
+void OutputInterface::SetScene(const ScreenScene scene) {
+  current_scene_ = scene;
+}
+
+ScreenScene OutputInterface::CurrentScene() {
+  return current_scene_;
 }

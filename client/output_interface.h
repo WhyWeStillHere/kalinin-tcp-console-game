@@ -1,6 +1,7 @@
+#include "../lib/player_info.h"
+#include "../lib/room_info.h"
 #include "painter.h"
 #include "terminal_manager.h"
-#include "../lib/room_info.h"
 
 #include <string>
 
@@ -25,14 +26,23 @@ public:
   void DeleteSymbol();
   void ClearScreen();
   void DrawRoomList(std::vector<RoomInfo>& room_list);
+  void DrawLobbyScreen(const std::vector<PlayerInfo>& player_list);
   void ReadRoomId();
 
-  void WriteError(const std::string& error, ScreenScene screen);
+  void WriteError(const std::string& error);
+
+  void SetScene(ScreenScene scene);
+  ScreenScene CurrentScene();
 
 private:
-  void DrawList(int x1, int y1, int x2, int y2, std::vector<std::string>& lines);
-  void DrawRooms(int x1, int y1, int x2, int y2, std::vector<RoomInfo>& room_list);
+  void DrawList(int x1, int y1, int x2, int y2,
+      const std::vector<std::string>& lines);
+  void DrawRooms(int x1, int y1, int x2, int y2,
+      const std::vector<RoomInfo>& room_list);
+  void DrawPlayers(int x1, int y1, int x2, int y2,
+      const std::vector<PlayerInfo>& player_list);
 
+  ScreenScene current_scene_ = UNKNOWN_SCREEN;
   TerminalManager& terminal_;
   Painter* painter_ = nullptr;
   int rows_, cols_;

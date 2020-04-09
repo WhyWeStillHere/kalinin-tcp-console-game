@@ -29,3 +29,9 @@ void write_buffer(const int fd, const char* buffer, const size_t buffer_size);
 size_t write_buffer_some(const int fd, const char* buffer, const size_t buffer_size);
 // Read some data to buffer
 size_t read_buffer_some(const int fd, char* buffer, const size_t buffer_size);
+
+// First 4 char would be str len
+void write_string(const int fd, const std::string& str);
+void serialize_string(std::vector<char>& buffer, const std::string& str);
+// First 4 char would be str len
+std::string read_string(const int fd);

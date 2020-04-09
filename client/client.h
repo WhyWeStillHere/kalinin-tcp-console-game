@@ -28,6 +28,7 @@ public:
 private:
   int socket_ = -1;
   static volatile sig_atomic_t exit_flag_;
+  std::string last_error_ = "";
   void ConfigureSignals();
   static void ExitHandler(int signum);
   InterfaceManager interface_manager_;

@@ -44,14 +44,45 @@ void Client::Run(const char* ip_string, const int port) {
     rooms_info.push_back(room);
 
     while (1) {
-      CommandToManager command = interface_manager_.MainServerPage(rooms_info);
+      CommandToManager command = interface_manager_.MainServerPage(rooms_info, last_error_);
+      last_error_.clear();
       if (command == JOIN_ROOM) {
         int room_id = interface_manager_.GetRoomId();
+        bool correct_id = false;
+        for (const auto& room: rooms_info) {
+            if (room.id == room_id) {
+                correct_id = true;
+                break;
+            }
+        }
+        if (correct_id) {
+            //Do something
+            break;
+        } else {
+          last_error_ = "Incorrect room ID";
+          continue;
+        }
+      } else if (command == REFRESH_ROOMS) {
+        // Do refresh
+        continue;
+      } else if (command == CREATE_ROOM) {
+        // Room creating
+        break;
       }
+    }
 
-      while(1) {
+    std::vector<PlayerInfo> players_info;
 
-      }
+    PlayerInfo player;
+    player.login = "Kek";
+    players_info.push_back(player);
+    player.login = "LOL";
+    players_info.push_back(player);
+    player.login = "AXAXAX";
+    players_info.push_back(player);
+    interface_manager_.LobbyPage(players_info);
+
+    while(1) {
 
     }
 

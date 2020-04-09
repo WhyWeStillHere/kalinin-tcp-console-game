@@ -123,3 +123,24 @@ size_t read_buffer_some(const int fd, char* buffer, const size_t buffer_size) {
   }
   return read_cnt;
 }
+
+void write_string(const int fd, const std::string& str) {
+  uint32_t str_size = str.size();
+  write_uint32(fd, &str_size);
+  write_buffer(fd, str.data(), str_size);
+}
+
+void serialize_string(std::vector<char>& buffer, const std::string& str) {
+  uint32_t str_size = str.size();
+  serialize_uint32(buffer, str_size);
+  for (const auto& letter: str) {
+    buffer.push_back(letter);
+  }
+}
+
+std::string read_string(const int fd) {
+  uint32_t str_size;
+  read_uint32(fd, &str_size);
+  std::string str(str_size, ' ');
+  read_buffer(fd, &str[0], str_size);
+}
