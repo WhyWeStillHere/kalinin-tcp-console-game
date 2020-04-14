@@ -1,4 +1,4 @@
-#include "terminal_manager.h"
+#include "../terminal_manager.h"
 
 enum editorKey {
   DEL_KEY = 1000,

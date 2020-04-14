@@ -1,7 +1,7 @@
 #include "client.h"
-#include "../lib/room_info.h"
-#include "../lib/tcp_utilities.h"
-#include "../lib/send_command.h"
+#include "../lib/info_structures/room_info.h"
+#include "../lib/network_utilities/send_command.h"
+#include "../lib/network_utilities/tcp_utilities.h"
 
 #include <iostream>
 #include <vector>
@@ -24,15 +24,8 @@ Client::~Client() {
   }
 }
 
-
-// TODO: ERROR PARSING
-void Client::Run(const char* ip_string, const int port) {
-  try {
-    interface_manager_.Start();
-    std::string login = interface_manager_.AskLogin();
-
-    //Connect(ip_string, port);
-
+std::vector<RoomInfo> Client::LoadRooms() {
+  if (false) {
     std::vector<RoomInfo> rooms_info;
 
     RoomInfo room;
@@ -42,35 +35,13 @@ void Client::Run(const char* ip_string, const int port) {
     room.id = 1;
     room.participant_num = 100;
     rooms_info.push_back(room);
+    return rooms_info;
+  }
+  return read_vector<RoomInfo>(socket_);
+}
 
-    while (1) {
-      CommandToManager command = interface_manager_.MainServerPage(rooms_info, last_error_);
-      last_error_.clear();
-      if (command == JOIN_ROOM) {
-        int room_id = interface_manager_.GetRoomId();
-        bool correct_id = false;
-        for (const auto& room: rooms_info) {
-            if (room.id == room_id) {
-                correct_id = true;
-                break;
-            }
-        }
-        if (correct_id) {
-            //Do something
-            break;
-        } else {
-          last_error_ = "Incorrect room ID";
-          continue;
-        }
-      } else if (command == REFRESH_ROOMS) {
-        // Do refresh
-        continue;
-      } else if (command == CREATE_ROOM) {
-        // Room creating
-        break;
-      }
-    }
-
+std::vector<PlayerInfo> Client::LoadPlayers() {
+  if (false) {
     std::vector<PlayerInfo> players_info;
 
     PlayerInfo player;
@@ -80,7 +51,79 @@ void Client::Run(const char* ip_string, const int port) {
     players_info.push_back(player);
     player.login = "AXAXAX";
     players_info.push_back(player);
+  }
+  return read_vector<PlayerInfo>(socket_);
+}
+
+void Client::JoinRoom(int room_id, const std::vector<RoomInfo> &rooms_info) {
+  bool correct_id = false;
+  for (const auto& room: rooms_info) {
+    if (room.id == room_id) {
+      correct_id = true;
+      break;
+    }
+  }
+  if (correct_id) {
+    auto room_id_uint = static_cast<uint32_t>(room_id);
+    WriteCommand(CommandToManager::JOIN_ROOM, socket_);
+    write_uint32(socket_, &room_id_uint);
+    write_string(socket_, login_);
+    std::vector<PlayerInfo> players_info;
+    players_info = LoadPlayers();
     interface_manager_.LobbyPage(players_info);
+    while (true) {
+      auto command = ReadCommand<CommandToPlayer>(socket_);
+      if (command == START_GAME) {
+        break;
+      }
+      players_info = LoadPlayers();
+      interface_manager_.LobbyPage(players_info);
+    }
+  } else {
+    last_error_ = "Incorrect room ID";
+  }
+}
+
+void Client::CreateRoom() {
+  WriteCommand(CommandToManager::CREATE_ROOM, socket_);
+  write_string(socket_, login_);
+  std::vector<PlayerInfo> players_info = LoadPlayers();
+  interface_manager_.LobbyPage(players_info);
+  while (true) {
+    auto command = ReadCommand<CommandToPlayer>(socket_);
+    if (command == START_GAME) {
+      break;
+    }
+    players_info = LoadPlayers();
+    interface_manager_.LobbyPage(players_info);
+  }
+}
+
+
+// TODO: ERROR PARSING
+void Client::Run(const char* ip_string, const int port) {
+  try {
+    interface_manager_.Start();
+    login_ = interface_manager_.AskLogin();
+
+    Connect(ip_string, port);
+
+    std::vector<RoomInfo> rooms_info = LoadRooms();
+
+    while (true) {
+      CommandToManager command = interface_manager_.MainServerPage(rooms_info, last_error_);
+      last_error_.clear();
+      if (command == JOIN_ROOM) {
+        JoinRoom(interface_manager_.GetRoomId(), rooms_info);
+      } else if (command == REFRESH_ROOMS) {
+        WriteCommand(CommandToManager::REFRESH_ROOMS, socket_);
+        rooms_info = LoadRooms();
+        continue;
+      } else if (command == CREATE_ROOM) {
+        CreateRoom();
+        break;
+      }
+    }
 
     while(1) {
 

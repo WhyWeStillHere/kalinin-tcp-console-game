@@ -1,7 +1,7 @@
-#include "terminal_manager.h"
-#include "output_interface.h"
+#include "../../lib/network_utilities/send_command.h"
+#include "../terminal_manager.h"
 #include "input_interface.h"
-#include "../lib/send_command.h"
+#include "output_interface.h"
 
 class InterfaceManager {
 public:

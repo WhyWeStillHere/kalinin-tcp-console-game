@@ -1,8 +1,8 @@
 #include <unistd.h>
 #include <stdexcept>
 
+#include "../network_utilities/tcp_utilities.h"
 #include "room_info.h"
-#include "tcp_utilities.h"
 
 void RoomInfo::Read(const int socket_fd) {
   char buffer[8];
@@ -13,7 +13,7 @@ void RoomInfo::Read(const int socket_fd) {
   buffer_ind = buff_to_uint32(buffer_ind, &participant_num);
 }
 
-void RoomInfo::WriteBuffer(std::vector<char> &buffer) {
+void RoomInfo::WriteBuffer(std::vector<char> &buffer) const {
   serialize_uint32(buffer, id);
   serialize_uint32(buffer, participant_num);
 }

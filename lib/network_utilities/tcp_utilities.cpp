@@ -1,22 +1,23 @@
 #include "tcp_utilities.h"
-
+#include <iostream>
+#include <sys/syslog.h>
 
 void serialize_uint32(std::vector<char>& buffer, const uint32_t value) {
   net_unit32_t net_value;
   net_value.num = htonl(value);
-  buffer.push_back(net_value.bytes[0]);
-  buffer.push_back(net_value.bytes[1]);
-  buffer.push_back(net_value.bytes[2]);
   buffer.push_back(net_value.bytes[3]);
+  buffer.push_back(net_value.bytes[2]);
+  buffer.push_back(net_value.bytes[1]);
+  buffer.push_back(net_value.bytes[0]);
 }
 
 
 char* buff_to_uint32(char* buffer, uint32_t* value) {
   net_unit32_t net_value;
-  net_value.bytes[0] = buffer[0];
-  net_value.bytes[1] = buffer[1];
-  net_value.bytes[2] = buffer[2];
-  net_value.bytes[3] = buffer[3];
+  net_value.bytes[0] = buffer[3];
+  net_value.bytes[1] = buffer[2];
+  net_value.bytes[2] = buffer[1];
+  net_value.bytes[3] = buffer[0];
   *value = ntohl(net_value.num);
   return buffer + 4;
 }
@@ -140,7 +141,12 @@ void serialize_string(std::vector<char>& buffer, const std::string& str) {
 
 std::string read_string(const int fd) {
   uint32_t str_size;
-  read_uint32(fd, &str_size);
-  std::string str(str_size, ' ');
-  read_buffer(fd, &str[0], str_size);
+  read_uint32_by_char(fd, &str_size);
+  if (str_size > 0) {
+    std::string str(str_size, ' ');
+    read_buffer(fd, &str[0], str_size);
+    return str;
+  } else {
+    return {0};
+  }
 }

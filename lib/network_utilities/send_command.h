@@ -16,6 +16,18 @@ enum CommandToClient {
   ROOM_CREATED,
 };
 
+// Command for players that waiting in lobby
+enum CommandToPlayer {
+  START_GAME,
+  UPDATE_PLAYERS
+};
+
+
+enum CommandToRoom {
+  START_GAME_HOST
+};
+
+
 // Use if someone send commands like uin32_t
 template <class Command>
 Command ReadCommand(const int fd);
@@ -31,5 +43,4 @@ void WriteCommand(const Command command, const int fd);
 // Use then you split your command on 4 chars and
 // write it to buffer
 template <class Command>
-void WriteBufferCommand(const Command command, const
-    int fd, std::vector<char>& buffer);
+void WriteBufferCommand(const Command command, std::vector<char>& buffer);

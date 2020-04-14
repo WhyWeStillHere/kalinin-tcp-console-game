@@ -1,4 +1,4 @@
-#include "../lib/send_command.h"
+#include "../../lib/network_utilities/send_command.h"
 #include "interface_manager.h"
 #include <cctype>
 

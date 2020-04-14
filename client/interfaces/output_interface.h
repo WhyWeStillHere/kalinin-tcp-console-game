@@ -1,7 +1,7 @@
-#include "../lib/player_info.h"
-#include "../lib/room_info.h"
-#include "painter.h"
-#include "terminal_manager.h"
+#include "../../lib/info_structures/player_info.h"
+#include "../../lib/info_structures/room_info.h"
+#include "../painter.h"
+#include "../terminal_manager.h"
 
 #include <string>
 

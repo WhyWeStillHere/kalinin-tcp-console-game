@@ -17,12 +17,12 @@
 #include <vector>
 #include <pthread.h>
 
-#include "../lib/tcp_connection.h"
-#include "../lib/room_info.h"
-#include "../lib/tcp_utilities.h"
-#include "../lib/send_command.h"
-#include "room.h"
+#include "../lib/info_structures/room_info.h"
+#include "../lib/network_utilities/send_command.h"
+#include "../lib/network_utilities/tcp_connection.h"
+#include "../lib/network_utilities/tcp_utilities.h"
 #include "io_context.h"
+#include "room.h"
 
 enum ServerStartUpType {
   DAEMON,
@@ -33,8 +33,6 @@ enum ManagerStates {
   START,
   SENDING_ROOMS,
   WAITING_COMMAND,
-  ASKING_LOGIN_SIZE,
-  ASKING_LOGIN,
   JOINING_ROOM,
   CREATING_ROOM
 };

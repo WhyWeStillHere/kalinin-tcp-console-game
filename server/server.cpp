@@ -1,6 +1,6 @@
 
 #include "server.h"
-#include "../lib/tcp_utilities.h"
+#include "../lib/network_utilities/tcp_utilities.h"
 #include <iostream>
 
 volatile sig_atomic_t GameServer::exit_flag_ = 0;
@@ -165,7 +165,13 @@ void GameServer::ManageEvents(const int event_num, epoll_event* events) {
     auto data = static_cast<IOContext::data_t *>(event->data.ptr);
 
     if (event->events & (EPOLLHUP | EPOLLERR | EPOLLPRI)) {
-      CloseConnection(data->fd);
+      if (data->fd_type == ROOM) {
+        RoomInfo& room = rooms_.at(data->fd);
+        pthread_join(room.thread, NULL);
+        rooms_.erase(data->fd);
+      } else {
+        CloseConnection(data->fd);
+      }
       continue;
     }
 
@@ -180,6 +186,9 @@ void GameServer::ManageEvents(const int event_num, epoll_event* events) {
       }
     }
     if (data->fd_type == ROOM) {
+      if (event->events & (EPOLLIN)) {
+        rooms_[data->fd].state = PLAYING;
+      }
       try {
         ConnectToRoom(data->fd);
       } catch(...) {
@@ -191,8 +200,9 @@ void GameServer::ManageEvents(const int event_num, epoll_event* events) {
 }
 
 void GameServer::ConnectToRoom(int fd) {
-  RoomInfo room = rooms_.at(fd);
+  RoomInfo& room = rooms_.at(fd);
   while (!room.waiting_clients.empty()) {
+    syslog (LOG_WARNING, "Connecting to room");
     int ret = write(fd, &room.waiting_clients.back(), sizeof(int));
     if (ret <= 0) {
       return;
@@ -204,14 +214,19 @@ void GameServer::ConnectToRoom(int fd) {
 
 void GameServer::ManageState(int fd) {
   ManagerStates& state = connections_[fd].state;
+  ManagerStates& key_state = connections_[fd].key_state;
   std::vector<char>& buffer = connections_[fd].buffer;
   size_t& index = connections_[fd].operation_index;
 
   if (state == START) {
-    serialize_uint32(buffer, static_cast<uint32_t>(rooms_.size()));
-    for (auto room_info: rooms_) {
-      room_info.second.WriteBuffer(buffer);
+    std::vector<RoomInfo> room_list;
+    for (auto& room_info: rooms_) {
+      if (room_info.second.state != PLAYING) {
+        room_list.push_back(room_info.second);
+      }
     }
+
+    write_vector<RoomInfo>(buffer, room_list);
     state = SENDING_ROOMS;
   }
   if (state == SENDING_ROOMS) {
@@ -221,6 +236,7 @@ void GameServer::ManageState(int fd) {
        buffer.size() * sizeof(char));
     if (index == buffer.size()) {
      buffer.clear();
+     index = 0;
      state = WAITING_COMMAND;
      io_context_.ChangeEvent(READ_FD, fd);
      return;
@@ -231,42 +247,31 @@ void GameServer::ManageState(int fd) {
     if (command == CommandToManager::REFRESH_ROOMS) {
       state = START;
       io_context_.ChangeEvent(WRITE_FD, fd);
-    } else if (command == CommandToManager::CREATE_ROOM) {
-      state = ASKING_LOGIN_SIZE;
-      index = 0;
       return;
+    } else if (command == CommandToManager::CREATE_ROOM) {
+      state = CREATING_ROOM;
     } else if (command == CommandToManager::JOIN_ROOM) {
       state = JOINING_ROOM;
-      return;
     } else {
       syslog (LOG_WARNING, "Error in receiving command");
       return;
     }
   }
-  if (state == ASKING_LOGIN_SIZE) {
-    uint32_t login_size;
-    read_uint32(fd, &login_size);
-    buffer.resize(login_size);
-    state = ASKING_LOGIN;
-  }
-  if (state == ASKING_LOGIN) {
-    index += read_buffer_some(fd, buffer.data() + index, buffer.size());
-    if (index == buffer.size()) {
-      syslog (LOG_WARNING, "New login: %s", buffer.data());
-      buffer.clear();
-      CreateRoom(fd);
-    }
-    return;
+  if (state == CREATING_ROOM) {
+    CreateRoom(fd);
   }
   if (state == JOINING_ROOM) {
     uint32_t room_pid;
+    syslog(LOG_WARNING, "Start read pid");
     read_uint32(fd, &room_pid);
+    syslog(LOG_WARNING, "Pid: %d", room_pid);
 
-    if (rooms_.find(fd) == rooms_.end()) {
+    if (rooms_.find(room_pid) == rooms_.end()) {
       throw std::runtime_error("Pid is not valid");
     }
-    RoomInfo room = rooms_.at(fd);
+    RoomInfo& room = rooms_.at(room_pid);
     room.waiting_clients.push_back(fd);
+    ++room.participant_num;
     io_context_.DelEvent(fd);
     io_context_.AddEvent(WRITE_FD, ROOM, room.input_fd);
   }
@@ -282,7 +287,7 @@ void GameServer::CreateRoom(int fd) {
   connections_.erase(connections_.find(fd));
 
   RoomInfo info;
-  info.id = ID++;
+  info.id = room_fd[1];
   info.participant_num = 0;
   info.input_fd = room_fd[1];
 
@@ -313,7 +318,7 @@ void GameServer::AddNewConnection() {
     connections_[client_fd].state = START;
     io_context_.AddEvent(WRITE_FD, CLIENT, client_fd);
     syslog (LOG_NOTICE, "Accept connection");
-  } while (1);
+  } while (true);
 }
 
 void GameServer::CloseConnection(const int socket_fd) {

@@ -11,7 +11,7 @@
 #include <syslog.h>
 #include <unistd.h>
 
-#include "interface_manager.h"
+#include "interfaces/interface_manager.h"
 
 class Client {
 public:
@@ -26,9 +26,15 @@ public:
   void Run(const char* ip_string, const int port);
 
 private:
+  std::vector<RoomInfo> LoadRooms();
+  std::vector<PlayerInfo> LoadPlayers();
+  void JoinRoom(int room_id, const std::vector<RoomInfo>& rooms_info);
+  void CreateRoom();
+
   int socket_ = -1;
   static volatile sig_atomic_t exit_flag_;
   std::string last_error_ = "";
+  std::string login_ = "";
   void ConfigureSignals();
   static void ExitHandler(int signum);
   InterfaceManager interface_manager_;
