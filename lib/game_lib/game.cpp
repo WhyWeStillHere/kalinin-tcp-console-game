@@ -16,13 +16,41 @@ void Game::Init(const std::vector<PlayerInfo>& players) {
   for (const auto& player: players) {
     auto player_ptr = std::make_shared<PlayerObject>(player.id, initial_health_);
     map_.PlacePlayer(player_ptr);
-    players_.push_back(player_ptr);
+    players_[player.id] = player_ptr;
   }
 }
 
-void Game::UpdatePlayerInfo() {
-  std::vector<PlayerObjectInfo> players_info;
+GameInfo Game::GetInfo() {
+  GameInfo info;
+  info.map = map_.GetInfo();
   for (const auto& player: players_) {
-    PlayerInfo info;
+    info.players_info.emplace_back(player.second->GetInfo());
   }
+  return std::move(info);
+}
+
+bool Game::MovePlayer(int player_id, Direction direction) {
+  MapPoint new_position;
+  std::shared_ptr<PlayerObject> player(players_[player_id]);
+  MapPoint current_position = player->position_;
+  switch (direction) {
+    case UP:
+      new_position = {current_position.x, current_position.y - 1};
+      break;
+    case DOWN:
+      new_position = {current_position.x, current_position.y + 1};
+      break;
+    case LEFT:
+      new_position = {current_position.x - 1, current_position.y};
+      break;
+    case RIGHT:
+      new_position = {current_position.x + 1, current_position.y};
+      break;
+  }
+  if (!map_.IsAvailable(new_position)) {
+    return false;
+  }
+  map_.MovePlayer(current_position, new_position);
+  player->position_ = new_position;
+  return true;
 }

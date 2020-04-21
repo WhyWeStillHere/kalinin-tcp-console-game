@@ -1,3 +1,5 @@
+#include "../../lib/info_structures/game_info.h"
+#include "../../lib/info_structures/game_map_info.h"
 #include "../../lib/network_utilities/send_command.h"
 #include "../terminal_manager.h"
 #include "input_interface.h"
@@ -12,7 +14,11 @@ public:
   CommandToManager MainServerPage(std::vector<RoomInfo>& room_list,
       const std::string& err = "");
   int GetRoomId();
-  void LobbyPage(std::vector<PlayerInfo>& player_list);
+  bool LobbyPage(std::vector<PlayerInfo>& player_list, bool is_host = false);
+  void InitGamePage(const GameInfo &game_info,
+                    const std::vector<PlayerInfo>& players, int player_id);
+  CommandToGame UpdateGamePage(const GameInfo &game_info,
+                      const std::vector<PlayerInfo>& players, int player_id);
 
 
 private:

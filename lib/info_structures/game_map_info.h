@@ -1,3 +1,4 @@
+#pragma once
 #include "info_structure.h"
 
 class GameMapInfo: public InfoStructure {

@@ -1,3 +1,4 @@
+#pragma once
 #include "game_map_info.h"
 #include "info_structure.h"
 #include "player_object_info.h"

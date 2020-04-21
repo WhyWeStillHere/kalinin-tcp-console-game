@@ -11,5 +11,7 @@ PlayerObjectInfo PlayerObject::GetInfo() const {
   PlayerObjectInfo info;
   info.id = id_;
   info.health_value = health_value_;
+  info.x_coord = position_.x;
+  info.y_coord = position_.y;
   return info;
 }

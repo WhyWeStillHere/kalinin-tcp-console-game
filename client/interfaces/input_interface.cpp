@@ -11,15 +11,12 @@ void InputInterface::PressAnyKey() {
     throw -1;
   }
 }
-
-int InputInterface::ReadLetter() {
-  char c = terminal_.ReadKeyBlock();
-
-  if (c == CTRL_KEY('q')) {
+int InputInterface::ParseLetter(const char letter) {
+  if (letter == CTRL_KEY('q')) {
     throw -1;
   }
 
-  if (c == '\x1b') {
+  if (letter == '\x1b') {
     int seq[3];
     seq[0] = terminal_.ReadKey();
     if (seq[0] == -1) {
@@ -44,11 +41,24 @@ int InputInterface::ReadLetter() {
       }
     }
     return UNKNOWN_KEY;
-  } else if (c == '\x7f') {
+  } else if (letter == '\x7f') {
     return DEL_KEY;
-  } else if (c == 13) {
+  } else if (letter == 13) {
     return ENTER_KEY;
   } else {
-      return c;
+    return letter;
   }
+}
+
+int InputInterface::ReadLetter() {
+  char c = terminal_.ReadKeyBlock();
+  return ParseLetter(c);
+}
+
+int InputInterface::ReadLetterNonBlock() {
+  int c = terminal_.ReadKey();
+  if (c == -1) {
+    return -1;
+  }
+  return ParseLetter(c);
 }

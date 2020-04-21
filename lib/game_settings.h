@@ -1,3 +1,4 @@
+#pragma once
 #include <pthread.h>
 #include <vector>
 
@@ -33,6 +34,4 @@ private:
 
 static GameSettings settings;
 
-GameSettings* GetCurrentSettings() {
-  return &settings;
-}
+GameSettings* GetCurrentSettings();

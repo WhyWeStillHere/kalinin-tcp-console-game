@@ -22,9 +22,19 @@ enum CommandToPlayer {
   UPDATE_PLAYERS
 };
 
-
+// Command from host to room
 enum CommandToRoom {
   START_GAME_HOST
+};
+
+// Command to game
+enum CommandToGame {
+  UNKNOWN_INPUT,
+  MOVE_UP,
+  MOVE_DOWN,
+  MOVE_LEFT,
+  MOVE_RIGHT,
+  SHOOT
 };
 
 

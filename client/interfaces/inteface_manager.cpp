@@ -49,10 +49,57 @@ CommandToManager InterfaceManager::MainServerPage(std::vector<RoomInfo>& room_li
   }
 }
 
-void InterfaceManager::LobbyPage(std::vector<PlayerInfo> &player_list) {
+bool InterfaceManager::LobbyPage(std::vector<PlayerInfo> &player_list, bool is_host) {
   out_interface_.SetScene(ScreenScene::LOBBY_SCREEN);
-  out_interface_.DrawLobbyScreen(player_list);
+  out_interface_.DrawLobbyScreen(player_list, is_host);
+  if (is_host) {
+    int c = in_interface_.ReadLetterNonBlock();
+    switch (c) {
+      case '0':
+        out_interface_.WriteSymbol(c);
+        return true;
+      default:
+        if (c > 0) {
+          out_interface_.WriteError(" Incorrect Command");
+        }
+        return false;
+    }
+  }
+  return false;
 }
+
+void InterfaceManager::InitGamePage(const GameInfo &game_info,
+                                    const std::vector<PlayerInfo>& players,
+                                    int player_id) {
+  out_interface_.DrawGameScreen(game_info, players, player_id);
+
+}
+
+CommandToGame InterfaceManager::UpdateGamePage(const GameInfo &game_info,
+                                               const std::vector<PlayerInfo> &players,
+                                               int player_id) {
+  InitGamePage(game_info, players, player_id);
+  while (true) {
+    int c = in_interface_.ReadLetterNonBlock();
+    switch (c) {
+    case 'W':
+    case 'w':
+      return MOVE_UP;
+    case 'S':
+    case 's':
+      return MOVE_DOWN;
+    case 'D':
+    case 'd':
+      return MOVE_RIGHT;
+    case 'A':
+    case 'a':
+      return MOVE_LEFT;
+    default:
+      return UNKNOWN_INPUT;
+    }
+  }
+}
+
 
 int InterfaceManager::GetRoomId() {
   out_interface_.ReadRoomId();

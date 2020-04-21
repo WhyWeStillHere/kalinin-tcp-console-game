@@ -2,7 +2,9 @@
 #include "../lib/info_structures/room_info.h"
 #include "../lib/network_utilities/send_command.h"
 #include "../lib/network_utilities/tcp_utilities.h"
+#include "../lib/sleep.h"
 
+#include <sys/ioctl.h>
 #include <iostream>
 #include <vector>
 
@@ -79,6 +81,21 @@ void Client::JoinRoom(int room_id, const std::vector<RoomInfo> &rooms_info) {
       players_info = LoadPlayers();
       interface_manager_.LobbyPage(players_info);
     }
+    GameInfo game_info;
+    game_info.Read(socket_);
+    interface_manager_.InitGamePage(game_info, players_info, -1);
+    int count = 0;
+    while (true) {
+      ioctl(socket_, FIONREAD, &count);
+      if (count != 0) {
+        game_info.Read(socket_);
+      }
+      sleep_millisecond(50);
+      CommandToGame interface_command(interface_manager_.UpdateGamePage(game_info, players_info, -1));
+      if (interface_command != UNKNOWN_INPUT) {
+        WriteCommand<CommandToGame>(interface_command, socket_);
+      }
+    }
   } else {
     last_error_ = "Incorrect room ID";
   }
@@ -88,14 +105,34 @@ void Client::CreateRoom() {
   WriteCommand(CommandToManager::CREATE_ROOM, socket_);
   write_string(socket_, login_);
   std::vector<PlayerInfo> players_info = LoadPlayers();
-  interface_manager_.LobbyPage(players_info);
+  interface_manager_.LobbyPage(players_info, true);
+  int count = 0;
   while (true) {
-    auto command = ReadCommand<CommandToPlayer>(socket_);
-    if (command == START_GAME) {
+    ioctl(socket_, FIONREAD, &count);
+    if (count != 0) {
+      auto command = ReadCommand<CommandToPlayer>(socket_);
+      players_info = LoadPlayers();
+    }
+    bool start_fl = interface_manager_.LobbyPage(players_info, true);
+    sleep_millisecond(500);
+    if (start_fl) {
       break;
     }
-    players_info = LoadPlayers();
-    interface_manager_.LobbyPage(players_info);
+  }
+  WriteCommand<CommandToRoom>(START_GAME_HOST, socket_);
+  GameInfo game_info;
+  game_info.Read(socket_);
+  interface_manager_.InitGamePage(game_info, players_info, -1);
+  while (true) {
+    ioctl(socket_, FIONREAD, &count);
+    if (count != 0) {
+      game_info.Read(socket_);
+    }
+    sleep_millisecond(50);
+    CommandToGame interface_command(interface_manager_.UpdateGamePage(game_info, players_info, -1));
+    if (interface_command != UNKNOWN_INPUT) {
+      WriteCommand<CommandToGame>(interface_command, socket_);
+    }
   }
 }
 
@@ -123,10 +160,6 @@ void Client::Run(const char* ip_string, const int port) {
         CreateRoom();
         break;
       }
-    }
-
-    while(1) {
-
     }
 
   } catch (int err_code) {

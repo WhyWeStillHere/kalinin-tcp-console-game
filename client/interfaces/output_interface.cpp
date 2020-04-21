@@ -1,4 +1,5 @@
 #include "output_interface.h"
+#include "../../lib/game_lib/game_objects/game_object.h"
 #include <cstring>
 #include <sstream>
 #include <string>
@@ -164,10 +165,16 @@ void OutputInterface::WriteError(const std::string &error) {
     painter_->ApplyDrawing();
     painter_->RemoveStringCenter(0.2, 0.9, out.size());
     break;
+  case LOBBY_SCREEN:
+    painter_->DrawStringCenter(0.2, 0.9, out.data(), out.size());
+    painter_->ApplyDrawing();
+    painter_->RemoveStringCenter(0.2, 0.9, out.size());
+    break;
   }
 }
 
-void OutputInterface::DrawLobbyScreen(const std::vector<PlayerInfo>& player_list) {
+void OutputInterface::DrawLobbyScreen(const std::vector<PlayerInfo>& player_list,
+                                      const bool is_host) {
   if (player_list.empty()) {
     throw std::logic_error("Incorrect player list");
   }
@@ -197,10 +204,94 @@ void OutputInterface::DrawLobbyScreen(const std::vector<PlayerInfo>& player_list
   painter_->DrawString(1, 3, str_buffer, strlen(str_buffer));
   DrawPlayers(0, 4, cross_vert_line, y_max, player_list);
 
+  if (is_host) {
+    // Draw command list
+    painter_->DrawRectangle(cross_vert_line, 0, x_max, 2);
+    sprintf(str_buffer, " Available commands: ");
+    painter_->DrawString(cross_vert_line + 1, 1, str_buffer, strlen(str_buffer));
+    std::vector<std::string> commands;
+    commands.emplace_back(" [0] Start game");
+    DrawList(cross_vert_line, 2, x_max, cross_horizontal_line, commands);
+
+    // Draw Action section
+    sprintf(str_buffer, "User Command: ");
+    painter_->DrawString(cross_vert_line + 2, cross_horizontal_line + 3, str_buffer, strlen(str_buffer));
+    painter_->MoveCursor(cross_vert_line + 2 + strlen(str_buffer), cross_horizontal_line + 3);
+  }
+
   painter_->DrawFrame();
 
   painter_->ApplyDrawing();
+}
 
+void OutputInterface::DrawGameScreen(const GameInfo &game_info,
+                                     const std::vector<PlayerInfo>& players,
+                                     int player_id) {
+  painter_->HideCursor();
+  painter_->ClearScreen();
+
+  char str_buffer[128];
+
+  int x_max = painter_->GetHorizontalCoord(0.999);
+  int y_max = painter_->GetVerticalCoord(0.999);
+
+  int cross_vert_line = painter_->GetHorizontalCoord(0.4);
+  int cross_horizontal_line = painter_->GetVerticalCoord(0.66);
+
+  painter_->DrawHorizontalLine(cross_horizontal_line, cross_vert_line, x_max, '_');
+  painter_->DrawHorizontalLine(cross_horizontal_line + 1, cross_vert_line, x_max, '_');
+  painter_->DrawVerticalLine(cross_vert_line, 0, y_max, '|');
+
+
+  painter_->DrawRectangle(0, 0, cross_vert_line, 2);
+  sprintf(str_buffer, " Host: %s", players.front().login.data());
+  painter_->DrawString(1, 1, str_buffer, strlen(str_buffer));
+
+  // Draw player list
+  painter_->DrawRectangle(0, 2, cross_vert_line, 4, '|', '=');
+  sprintf(str_buffer, " Current players: ");
+  painter_->DrawString(1, 3, str_buffer, strlen(str_buffer));
+  std::vector<std::string> lines;
+  for (int i = 1; i < players.size(); ++i) {
+    for (const auto& player: game_info.players_info) {
+      if (player.id == players[i].id) {
+        std::ostringstream ss;
+        ss << " Player " << players[i].login << " HP: " << player.health_value;
+        lines.push_back(ss.str());
+        break;
+      }
+    }
+  }
+  DrawList(0, 4, cross_vert_line, y_max, lines);
+
+  // Draw map
+  DrawMap(cross_vert_line + 2 , 2, game_info.map, -1, -1);
+
+  painter_->DrawFrame();
+  painter_->ApplyDrawing();
+}
+
+void OutputInterface::DrawMap(int x, int y, const GameMapInfo& map_info,
+                              int player_x, int player_y) {
+  for (int i = 0; i < map_info.map.size(); ++i) {
+    for (int j = 0; j < map_info.map[i].size(); ++j) {
+      switch (map_info.map[i][j]) {
+        case GameObjectType::PLAYER:
+          painter_->Set(x + i, y + j, '@');
+          break;
+        case GameObjectType::VOID:
+          painter_->Set(x + i, y + j, ' ');
+          break;
+        case GameObjectType::WALL:
+          painter_->Set(x + i, y + j, '#');
+          break;
+        default:
+          painter_->Set(x + i, y + j, '?');
+          break;
+      }
+    }
+  }
+  //painter_->Set(player_x, player_y, 'P');
 }
 
 void OutputInterface::DrawPlayers(const int x1, const int y1, const int x2,

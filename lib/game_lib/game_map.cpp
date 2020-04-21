@@ -21,7 +21,7 @@ void GameMap::Init() {
   map_.resize(width_, std::vector< std::shared_ptr<GameObject> >  (height_));
   for (int i = 0; i < height_; ++i) {
     for (int j = 0; j < width_; ++j) {
-      if (simple_map[i][j] == '.') {
+      if (simple_map[i][j] == ' ') {
         map_[j][i] = void_obj_;
       } else {
         map_[j][i] = wall_obj_;
@@ -50,4 +50,45 @@ MapPoint GameMap::GetRandomValidPoint() {
 void GameMap::PlacePlayer(std::shared_ptr<PlayerObject> player) {
   MapPoint point = GetRandomValidPoint();
   map_[point.x][point.y] = player;
+  player->position_ = {point.x, point.y};
+}
+
+GameMapInfo GameMap::GetInfo() {
+  GameMapInfo info;
+  info.map.resize(width_, std::vector<char> (height_, ' '));
+  for (int i = 0; i < width_; ++i) {
+    for (int j = 0; j < height_; ++j) {
+      info.map[i][j] = map_[i][j]->type_;
+    }
+  }
+  return std::move(info);
+}
+
+std::shared_ptr<GameObject> GameMap::GetObject(const MapPoint position) {
+  return map_[position.x][position.y];
+}
+
+void GameMap::SetObject(MapPoint position, std::shared_ptr<GameObject> object) {
+  map_[position.x][position.y] = std::move(object);
+}
+
+bool GameMap::IsAvailable(MapPoint position) {
+  if (position.x < 0 || position.x >= width_ ||
+      position.y < 0 || position.y >= height_) {
+    return false;
+  }
+  std::shared_ptr<GameObject> on_position(GetObject(position));
+  if (on_position->type_ == WALL || on_position->type_ == PLAYER) {
+    return false;
+  }
+  return true;
+}
+
+void GameMap::MovePlayer(MapPoint player_position, MapPoint destination_position) {
+  std::shared_ptr<GameObject> player(GetObject(player_position));
+  if (player->type_ != PLAYER) {
+    throw std::logic_error("There is no player on player position");
+  }
+  SetObject(destination_position, GetObject(player_position));
+  SetObject(player_position, void_obj_);
 }

@@ -12,6 +12,8 @@ public:
 
   void PressAnyKey();
   int ReadLetter();
+  int ReadLetterNonBlock();
 private:
+  int ParseLetter(char letter);
   TerminalManager& terminal_;
 };

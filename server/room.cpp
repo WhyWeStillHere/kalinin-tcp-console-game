@@ -74,7 +74,11 @@ void Room::Run() {
     try {
       int event_num = io_context_.Wait(events);
       //syslog (LOG_WARNING, "Room events %d", event_num);
-      ManageEvents(event_num, events);
+      if (state_ != PLAYING) {
+        ManageEvents(event_num, events);
+      } else {
+        ManageGame(event_num, events);
+      }
     } catch (const std::exception& err) {
       syslog (LOG_WARNING, "Error in room runtime: %s", err.what());
     }
@@ -94,7 +98,7 @@ void Room::ManageEvents(const int event_num, epoll_event* events) {
   for (size_t i = 0; i < event_num; ++i) {
     epoll_event* event = &events[i];
     auto data = static_cast<IOContext::data_t *>(event->data.ptr);
-
+/*
     if (data->fd_type == CREATOR) {
       syslog (LOG_WARNING, "Creator event");
       if (event->events & EPOLLIN) {
@@ -106,7 +110,7 @@ void Room::ManageEvents(const int event_num, epoll_event* events) {
       if (event->events & EPOLLOUT) {
         syslog (LOG_WARNING, "Creator write");
       }
-    }
+    }*/
 
     if (event->events & (EPOLLHUP | EPOLLERR | EPOLLPRI)) {
       if (data->fd_type == CREATOR) {
@@ -129,6 +133,8 @@ void Room::ManageEvents(const int event_num, epoll_event* events) {
     if (data->fd_type == CREATOR) {
       if (connections_[data->fd].state != READY_TO_PLAY) {
         ManagePlayer(data->fd);
+      } else {
+        ManageHost(data->fd);
       }
       return;
     }
@@ -142,6 +148,79 @@ void Room::ManageEvents(const int event_num, epoll_event* events) {
         syslog (LOG_WARNING, "Error while room connection");
         std::rethrow_exception(std::current_exception());
       }
+    }
+  }
+}
+
+void Room::ManageGame(int event_num, epoll_event* events) {
+  for (size_t i = 0; i < event_num; ++i) {
+    epoll_event* event = &events[i];
+    auto data = static_cast<IOContext::data_t *>(event->data.ptr);
+
+    if (event->events & (EPOLLHUP | EPOLLERR | EPOLLPRI)) {
+      if (data->fd_type == CREATOR) {
+        syslog (LOG_WARNING, "Host error");
+        exit_flag_ = 1;
+        return;
+      }
+      CloseConnection(data->fd);
+      continue;
+    }
+    if (data->fd_type == CLIENT || data->fd_type == CREATOR) {
+        ManagePlayerEvent(data->fd);
+    }
+  }
+}
+
+void Room::ManagePlayerEvent(const int fd) {
+  int player_id = players_[fd].id;
+  auto command(ReadCommand<CommandToGame>(fd));
+  bool is_changed = false;
+  switch (command) {
+  case MOVE_UP:
+    is_changed = game_.MovePlayer(player_id, UP);
+    break;
+  case MOVE_DOWN:
+    is_changed = game_.MovePlayer(player_id, DOWN);
+    break;
+  case MOVE_LEFT:
+    is_changed = game_.MovePlayer(player_id, LEFT);
+    break;
+  case MOVE_RIGHT:
+    is_changed = game_.MovePlayer(player_id, RIGHT);
+    break;
+  }
+  if (is_changed) {
+    UpdateGameInfo();
+    SendBuffers();
+  }
+}
+
+void Room::UpdateGameInfo() {
+  GameInfo game_info = game_.GetInfo();
+  for (auto& connection: connections_) {
+    PlayerStates& player_state = connection.second.state;
+    PlayerStates& key_state = connection.second.key_state;
+    std::vector<char>& buffer = connection.second.buffer;
+    size_t& index = connection.second.operation_index;
+    game_info.WriteBuffer(buffer);
+  }
+}
+
+void Room::SendBuffers() {
+  for (auto&  connection: connections_) {
+    std::vector<char>& buffer = connection.second.buffer;
+    if (buffer.empty()) {
+      return;
+    }
+    size_t& index = connection.second.operation_index;
+    char* buf = buffer.data();
+    index += write_buffer_some(connection.first,
+                               buf + static_cast<int>(index),
+                               buffer.size() * sizeof(char));
+    if (index == buffer.size()) {
+      buffer.clear();
+      index = 0;
     }
   }
 }
@@ -177,6 +256,9 @@ void Room::ManageHost(const int fd) {
     state_ = STARTING;
     player_state = STARTING_TO_PLAY;
     io_context_.DelEvent(server_fd_);
+    shutdown(server_fd_, SHUT_RDWR);
+    close(server_fd_);
+    syslog (LOG_WARNING, "Starting game");
     for (auto& connection: connections_) {
       if (connection.first != creator_fd_) {
         if (connection.second.state == READY_TO_PLAY) {
@@ -185,6 +267,8 @@ void Room::ManageHost(const int fd) {
         } else {
           connection.second.key_state = STARTING_TO_PLAY;
         }
+      } else {
+        connection.second.state = STARTING_TO_PLAY;
       }
     }
   }
@@ -241,6 +325,7 @@ void Room::ManagePlayer(const int fd) {
       index = 0;
       if (key_state == STARTING_TO_PLAY) {
         player_state = STARTING_TO_PLAY;
+        io_context_.DelEvent(fd);
       } else {
         player_state = READY_TO_PLAY;
         io_context_.ChangeEvent(READ_FD, fd);
@@ -257,5 +342,27 @@ void Room::ManagePlayer(const int fd) {
   if (player_state == STARTING_TO_PLAY) {
     WriteCommand<CommandToPlayer>(CommandToPlayer::START_GAME, fd);
     --waiting_persons_;
+    if (waiting_persons_ == 0) {
+      StartGame();
+    }
   }
+}
+
+void Room::StartGame() {
+  state_ = PLAYING;
+  std::vector<PlayerInfo> players;
+  for (const auto& player: players_) {
+    if (player.first != host_.id) {
+      players.emplace_back(player.second);
+    }
+  }
+
+  game_.Init(players);
+
+  // Preparing to read
+  for (const auto& connection: connections_) {
+    io_context_.ChangeEvent(READ_FD, connection.first);
+  }
+  UpdateGameInfo();
+  SendBuffers();
 }

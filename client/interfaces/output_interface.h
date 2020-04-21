@@ -1,4 +1,6 @@
+#include "../../lib/info_structures/game_info.h"
 #include "../../lib/info_structures/player_info.h"
+#include "../../lib/info_structures/player_object_info.h"
 #include "../../lib/info_structures/room_info.h"
 #include "../painter.h"
 #include "../terminal_manager.h"
@@ -26,8 +28,14 @@ public:
   void DeleteSymbol();
   void ClearScreen();
   void DrawRoomList(std::vector<RoomInfo>& room_list);
-  void DrawLobbyScreen(const std::vector<PlayerInfo>& player_list);
+  void DrawLobbyScreen(const std::vector<PlayerInfo>& player_list,
+                       bool is_host = false);
   void ReadRoomId();
+  void DrawGameScreen(const GameInfo& game_info,
+                      const std::vector<PlayerInfo>& players,
+                      int player_id);
+  void DrawMap(int x, int y, const GameMapInfo& map_info,
+               int player_x, int player_y);
 
   void WriteError(const std::string& error);
 

@@ -1,4 +1,5 @@
 #include "../../info_structures/player_object_info.h"
+#include "../map_point.h"
 #include "game_object.h"
 
 class PlayerObject: public GameObject {
@@ -8,7 +9,8 @@ public:
 
   PlayerObjectInfo GetInfo() const;
 
-private:
-  const int health_value_ = 20;
+public:
+  MapPoint position_;
+  int health_value_ = 20;
   const int id_ = -1;
 };

@@ -16,7 +16,6 @@ std::vector<InfoStruct> read_vector(const int socket_fd) {
   uint32_t vect_size;
   read_uint32_by_char(socket_fd, &vect_size);
   structs_info.resize(vect_size);
-  std::cout << vect_size << " :inside read\n";
   for (auto& structure: structs_info) {
     structure.Read(socket_fd);
   }
