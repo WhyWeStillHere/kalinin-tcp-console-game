@@ -15,3 +15,24 @@ PlayerObjectInfo PlayerObject::GetInfo() const {
   info.y_coord = position_.y;
   return info;
 }
+
+bool PlayerObject::Hit(int hit_damage) {
+  health_value_ = std::max(health_value_ - hit_damage, 0);
+  return health_value_ == 0;
+}
+
+bool PlayerObject::IsMoved() const {
+  return is_moved;
+}
+
+void PlayerObject::SetMoveFl() {
+  is_moved = true;
+}
+
+void PlayerObject::ResetMoveFl() {
+  is_moved = false;
+}
+
+bool PlayerObject::IsAlive() const {
+  return health_value_ > 0;
+}

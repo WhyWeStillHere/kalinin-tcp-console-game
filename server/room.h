@@ -38,6 +38,7 @@ private:
 
   void ManageEvents(int event_num, epoll_event* events);
   void ManageGame(int event_num, epoll_event* events);
+  void ApplyGameChanges(int timer_fd);
   void StartGame();
 
   void UpdateGameInfo();

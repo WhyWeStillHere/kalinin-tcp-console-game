@@ -77,6 +77,7 @@ void IOContext::DelEvent(const int fd) {
     throw std::logic_error("No such event in io_context");
   }
 
+  FdType type = event_map_[fd]->fd_type;
   free(event_map_[fd]);
   event_map_.erase(fd);
 
@@ -84,6 +85,11 @@ void IOContext::DelEvent(const int fd) {
   if (ret < 0) {
     syslog(LOG_NOTICE, "Error while event deletion: %s", strerror(errno));
     throw std::runtime_error("Unable to delete event");
+  }
+
+  // Close timer fd because we create it in SetTimer
+  if (type == TIMER) {
+    close(fd);
   }
 }
 
@@ -118,4 +124,27 @@ size_t IOContext::Wait(epoll_event* &events) {
   }
   events = events_;
   return event_num;
+}
+
+void IOContext::SetTimer(int milliseconds) {
+  int timer_fd = timerfd_create(CLOCK_MONOTONIC, 0);
+  if (timer_fd < 0) {
+    throw std::runtime_error("Timer creation error");
+  }
+  timespec wait_time = {
+    .tv_sec = milliseconds / 1000, // Seconds
+    .tv_nsec = (milliseconds % 1000) * 1000000 // Nanoseconds
+  };
+
+  itimerspec timer_settings {
+    .it_interval = wait_time,  // Interval for periodic timer
+    .it_value = wait_time  // Initial expiration
+  };
+
+  int ret = timerfd_settime(timer_fd, 0, &timer_settings, 0);
+  if (ret < 0) {
+    throw std::runtime_error("Timer settime error");
+  }
+
+  AddEvent(READ_FD, TIMER, timer_fd);
 }

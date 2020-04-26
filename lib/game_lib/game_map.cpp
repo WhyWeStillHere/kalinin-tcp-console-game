@@ -84,11 +84,20 @@ bool GameMap::IsAvailable(MapPoint position) {
   return true;
 }
 
-void GameMap::MovePlayer(MapPoint player_position, MapPoint destination_position) {
-  std::shared_ptr<GameObject> player(GetObject(player_position));
-  if (player->type_ != PLAYER) {
-    throw std::logic_error("There is no player on player position");
-  }
-  SetObject(destination_position, GetObject(player_position));
-  SetObject(player_position, void_obj_);
+void GameMap::MoveObject(MapPoint object_position, MapPoint destination_position) {
+  std::shared_ptr<GameObject> object(GetObject(object_position));
+  SetObject(destination_position, GetObject(object_position));
+  SetObject(object_position, void_obj_);
+}
+
+int GameMap::GetWidth() {
+  return width_;
+}
+
+int GameMap::GetHeight() {
+  return height_;
+}
+
+void GameMap::Clear(MapPoint position) {
+  SetObject(position, void_obj_);
 }

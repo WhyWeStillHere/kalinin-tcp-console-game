@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include <fcntl.h>
 #include <sys/epoll.h>
+#include <sys/timerfd.h>
 #include <unistd.h>
 #include <unordered_map>
 
@@ -16,7 +17,8 @@ enum FdType {
   SOCKET,
   CLIENT,
   ROOM,
-  CREATOR
+  CREATOR,
+  TIMER
 };
 
 const size_t MAX_EVENT_NUMBER = 4096;
@@ -34,6 +36,7 @@ public:
   void AddEvent(const EventType event_type, const FdType fd_type, const int fd);
   void ChangeEvent(const EventType new_type, const int fd);
   void DelEvent(const int fd);
+  void SetTimer(int milliseconds);
   size_t Wait(epoll_event* &events);
 
 private:
@@ -43,5 +46,4 @@ private:
   int epoll_fd_ = -1;
   epoll_event events_[MAX_EVENT_NUMBER];
   std::unordered_map<int, data_t*> event_map_;
-
 };

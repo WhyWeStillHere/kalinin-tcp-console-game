@@ -169,31 +169,33 @@ void Room::ManageGame(int event_num, epoll_event* events) {
     if (data->fd_type == CLIENT || data->fd_type == CREATOR) {
         ManagePlayerEvent(data->fd);
     }
+    if (data->fd_type == TIMER) {
+        ApplyGameChanges(data->fd);
+    }
   }
 }
 
 void Room::ManagePlayerEvent(const int fd) {
   int player_id = players_[fd].id;
   auto command(ReadCommand<CommandToGame>(fd));
-  bool is_changed = false;
   switch (command) {
   case MOVE_UP:
-    is_changed = game_.MovePlayer(player_id, UP);
+    game_.MovePlayer(player_id, UP);
     break;
   case MOVE_DOWN:
-    is_changed = game_.MovePlayer(player_id, DOWN);
+    game_.MovePlayer(player_id, DOWN);
     break;
   case MOVE_LEFT:
-    is_changed = game_.MovePlayer(player_id, LEFT);
+    game_.MovePlayer(player_id, LEFT);
     break;
   case MOVE_RIGHT:
-    is_changed = game_.MovePlayer(player_id, RIGHT);
+    game_.MovePlayer(player_id, RIGHT);
+    break;
+  case SHOOT:
+    game_.ShootProjectile(player_id);
     break;
   }
-  if (is_changed) {
-    UpdateGameInfo();
-    SendBuffers();
-  }
+
 }
 
 void Room::UpdateGameInfo() {
@@ -363,6 +365,16 @@ void Room::StartGame() {
   for (const auto& connection: connections_) {
     io_context_.ChangeEvent(READ_FD, connection.first);
   }
+  UpdateGameInfo();
+  SendBuffers();
+
+  io_context_.SetTimer(game_.GetUpdateWaitTime());
+}
+
+void Room::ApplyGameChanges(const int timer_fd) {
+  uint64_t timer_alarms;
+  read(timer_fd, &timer_alarms, sizeof(timer_alarms));
+  game_.UpdateGame(timer_alarms);
   UpdateGameInfo();
   SendBuffers();
 }

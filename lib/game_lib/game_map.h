@@ -1,3 +1,4 @@
+#include "../direction.h"
 #include "../game_settings.h"
 #include "../info_structures/game_map_info.h"
 #include "game_objects/game_object.h"
@@ -8,15 +9,7 @@
 #include <memory>
 #include <vector>
 
-
-enum Direction {
-  UP,
-  DOWN,
-  LEFT,
-  RIGHT
-};
-
-class GameMap {
+class GameMap : public std::enable_shared_from_this<GameMap> {
 public:
   GameMap();
 
@@ -26,14 +19,18 @@ public:
   void SetObject(MapPoint position, std::shared_ptr<GameObject> object);
 
   bool IsAvailable(MapPoint position);
-  void MovePlayer(MapPoint player_position, MapPoint destination_position);
+  void MoveObject(MapPoint object_position, MapPoint destination_position);
 
   void PlacePlayer(std::shared_ptr<PlayerObject> player);
+  void Clear(MapPoint position);
+  int GetWidth();
+  int GetHeight();
 
 private:
   MapPoint GetRandomValidPoint();
   std::vector< std::vector<std::shared_ptr<GameObject> > > map_;
-  int width_, height_;
+  int width_;
+  int height_;
 
   std::shared_ptr<VoidObject> void_obj_;
   std::shared_ptr<WallObject> wall_obj_;

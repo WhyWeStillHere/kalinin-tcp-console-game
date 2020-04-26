@@ -1,7 +1,8 @@
 #include "game.h"
 
 void Game::Init(const std::vector<PlayerInfo>& players) {
-  map_.Init();
+  map_ = std::make_shared<GameMap>();
+  map_->Init();
   GameSettings* game_settings = GetCurrentSettings();
   game_settings->Lock();
   initial_health_ = game_settings->initial_health_;
@@ -15,14 +16,14 @@ void Game::Init(const std::vector<PlayerInfo>& players) {
   game_settings->Unlock();
   for (const auto& player: players) {
     auto player_ptr = std::make_shared<PlayerObject>(player.id, initial_health_);
-    map_.PlacePlayer(player_ptr);
+    map_->PlacePlayer(player_ptr);
     players_[player.id] = player_ptr;
   }
 }
 
 GameInfo Game::GetInfo() {
   GameInfo info;
-  info.map = map_.GetInfo();
+  info.map = map_->GetInfo();
   for (const auto& player: players_) {
     info.players_info.emplace_back(player.second->GetInfo());
   }
@@ -33,24 +34,49 @@ bool Game::MovePlayer(int player_id, Direction direction) {
   MapPoint new_position;
   std::shared_ptr<PlayerObject> player(players_[player_id]);
   MapPoint current_position = player->position_;
-  switch (direction) {
-    case UP:
-      new_position = {current_position.x, current_position.y - 1};
-      break;
-    case DOWN:
-      new_position = {current_position.x, current_position.y + 1};
-      break;
-    case LEFT:
-      new_position = {current_position.x - 1, current_position.y};
-      break;
-    case RIGHT:
-      new_position = {current_position.x + 1, current_position.y};
-      break;
-  }
-  if (!map_.IsAvailable(new_position)) {
+
+  new_position = GetNewPosition(current_position, direction);
+
+  if (!map_->IsAvailable(new_position)) {
     return false;
   }
-  map_.MovePlayer(current_position, new_position);
+  map_->MoveObject(current_position, new_position);
   player->position_ = new_position;
+  player->SetMoveFl();
   return true;
+}
+
+int Game::GetUpdateWaitTime() const {
+  return static_cast<int>(step_standard_delay_ * 1000);
+}
+
+void Game::UpdateGame(const int update_num) {
+  for (auto& player: players_) {
+    if (player.second->IsMoved()) {
+      player.second->Hit(movement_health_drop_);
+      player.second->Hit(stay_health_drop_ * (update_num - 1));
+    } else {
+      player.second->Hit(stay_health_drop_ * update_num);
+    }
+    player.second->ResetMoveFl();
+  }
+
+  for (auto& projectile: projectiles_) {
+    if (!projectile->Move()) {
+      map_->Clear(projectile->GetPosition());
+    }
+  }
+}
+
+void Game::ShootProjectile(int player_id) {
+  std::shared_ptr<PlayerObject> player(players_[player_id]);
+  auto bullet_ptr = std::make_shared<ProjectileObject>(map_,
+                                                       player->position_,
+                                                       hit_value_);
+  MapPoint spawn_place = bullet_ptr->SpawnPosition();
+  if (spawn_place.x == -1 && spawn_place.y == -1) {
+    return;
+  }
+  map_->SetObject(spawn_place, bullet_ptr);
+  projectiles_.push_back(std::move(bullet_ptr));
 }

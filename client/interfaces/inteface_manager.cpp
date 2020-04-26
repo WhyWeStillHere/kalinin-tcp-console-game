@@ -94,6 +94,9 @@ CommandToGame InterfaceManager::UpdateGamePage(const GameInfo &game_info,
     case 'A':
     case 'a':
       return MOVE_LEFT;
+    case 'K':
+    case 'k':
+      return SHOOT;
     default:
       return UNKNOWN_INPUT;
     }

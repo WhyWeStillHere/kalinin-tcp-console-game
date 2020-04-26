@@ -83,15 +83,24 @@ void Client::JoinRoom(int room_id, const std::vector<RoomInfo> &rooms_info) {
     }
     GameInfo game_info;
     game_info.Read(socket_);
-    interface_manager_.InitGamePage(game_info, players_info, -1);
+    int player_id = -1;
+    for (int i = 0; i < players_info.size(); ++i) {
+      for (const auto& player: game_info.players_info) {
+        if (player.id == players_info[i].id && players_info[i].login == login_) {
+          player_id = player.id;
+          break;
+        }
+      }
+    }
+    std::cout << player_id << "\n";
+    interface_manager_.InitGamePage(game_info, players_info, player_id);
     int count = 0;
     while (true) {
       ioctl(socket_, FIONREAD, &count);
       if (count != 0) {
         game_info.Read(socket_);
       }
-      sleep_millisecond(50);
-      CommandToGame interface_command(interface_manager_.UpdateGamePage(game_info, players_info, -1));
+      CommandToGame interface_command(interface_manager_.UpdateGamePage(game_info, players_info, player_id));
       if (interface_command != UNKNOWN_INPUT) {
         WriteCommand<CommandToGame>(interface_command, socket_);
       }
@@ -114,7 +123,7 @@ void Client::CreateRoom() {
       players_info = LoadPlayers();
     }
     bool start_fl = interface_manager_.LobbyPage(players_info, true);
-    sleep_millisecond(500);
+    sleep_millisecond(50);
     if (start_fl) {
       break;
     }
@@ -122,14 +131,22 @@ void Client::CreateRoom() {
   WriteCommand<CommandToRoom>(START_GAME_HOST, socket_);
   GameInfo game_info;
   game_info.Read(socket_);
-  interface_manager_.InitGamePage(game_info, players_info, -1);
+  int player_id = -1;
+  for (int i = 0; i < players_info.size(); ++i) {
+    for (const auto& player: game_info.players_info) {
+      if (player.id == players_info[i].id && players_info[i].login == login_) {
+        player_id = player.id;
+        break;
+      }
+    }
+  }
+  interface_manager_.InitGamePage(game_info, players_info, player_id);
   while (true) {
     ioctl(socket_, FIONREAD, &count);
     if (count != 0) {
       game_info.Read(socket_);
     }
-    sleep_millisecond(50);
-    CommandToGame interface_command(interface_manager_.UpdateGamePage(game_info, players_info, -1));
+    CommandToGame interface_command(interface_manager_.UpdateGamePage(game_info, players_info, player_id));
     if (interface_command != UNKNOWN_INPUT) {
       WriteCommand<CommandToGame>(interface_command, socket_);
     }

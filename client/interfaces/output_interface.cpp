@@ -252,12 +252,17 @@ void OutputInterface::DrawGameScreen(const GameInfo &game_info,
   sprintf(str_buffer, " Current players: ");
   painter_->DrawString(1, 3, str_buffer, strlen(str_buffer));
   std::vector<std::string> lines;
+  int player_x = -1, player_y = -1;
   for (int i = 1; i < players.size(); ++i) {
     for (const auto& player: game_info.players_info) {
       if (player.id == players[i].id) {
         std::ostringstream ss;
         ss << " Player " << players[i].login << " HP: " << player.health_value;
         lines.push_back(ss.str());
+        if (player_id == player.id) {
+          player_x = player.x_coord;
+          player_y = player.y_coord;
+        }
         break;
       }
     }
@@ -265,7 +270,7 @@ void OutputInterface::DrawGameScreen(const GameInfo &game_info,
   DrawList(0, 4, cross_vert_line, y_max, lines);
 
   // Draw map
-  DrawMap(cross_vert_line + 2 , 2, game_info.map, -1, -1);
+  DrawMap(cross_vert_line + 2 , 2, game_info.map, player_x, player_y);
 
   painter_->DrawFrame();
   painter_->ApplyDrawing();
@@ -285,13 +290,18 @@ void OutputInterface::DrawMap(int x, int y, const GameMapInfo& map_info,
         case GameObjectType::WALL:
           painter_->Set(x + i, y + j, '#');
           break;
+        case GameObjectType::PROJECTILE:
+          painter_->Set(x + i, y + j, 'o');
+        break;
         default:
           painter_->Set(x + i, y + j, '?');
           break;
       }
     }
   }
-  //painter_->Set(player_x, player_y, 'P');
+  if (player_x != -1 && player_y != -1) {
+    painter_->Set(x + player_x, y + player_y, 'P');
+  }
 }
 
 void OutputInterface::DrawPlayers(const int x1, const int y1, const int x2,

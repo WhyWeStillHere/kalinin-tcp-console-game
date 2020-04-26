@@ -53,7 +53,7 @@ int TerminalManager::ReadKey() {
   if (nread == -1 && errno != EAGAIN) {
     Die("read");
   }
-  if (errno == EAGAIN) {
+  if (errno == EAGAIN || nread == 0) {
     return -1;
   }
   return c;
