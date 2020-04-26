@@ -9,7 +9,8 @@
 
 enum EventType {
   READ_FD,
-  WRITE_FD
+  WRITE_FD,
+  READ_WRITE_FD
 };
 
 enum FdType {

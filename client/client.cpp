@@ -27,33 +27,10 @@ Client::~Client() {
 }
 
 std::vector<RoomInfo> Client::LoadRooms() {
-  if (false) {
-    std::vector<RoomInfo> rooms_info;
-
-    RoomInfo room;
-    room.id = 0;
-    room.participant_num = 2;
-    rooms_info.push_back(room);
-    room.id = 1;
-    room.participant_num = 100;
-    rooms_info.push_back(room);
-    return rooms_info;
-  }
   return read_vector<RoomInfo>(socket_);
 }
 
 std::vector<PlayerInfo> Client::LoadPlayers() {
-  if (false) {
-    std::vector<PlayerInfo> players_info;
-
-    PlayerInfo player;
-    player.login = "Kek";
-    players_info.push_back(player);
-    player.login = "LOL";
-    players_info.push_back(player);
-    player.login = "AXAXAX";
-    players_info.push_back(player);
-  }
   return read_vector<PlayerInfo>(socket_);
 }
 
@@ -169,6 +146,7 @@ void Client::Run(const char* ip_string, const int port) {
       last_error_.clear();
       if (command == JOIN_ROOM) {
         JoinRoom(interface_manager_.GetRoomId(), rooms_info);
+        break;
       } else if (command == REFRESH_ROOMS) {
         WriteCommand(CommandToManager::REFRESH_ROOMS, socket_);
         rooms_info = LoadRooms();

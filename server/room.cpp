@@ -4,7 +4,7 @@
 #include <sys/socket.h>
 #include <sys/syslog.h>
 
-volatile sig_atomic_t Room::exit_flag_ = 0;
+volatile sig_atomic_t Room::signal_exit_flag_ = 0;
 
 Room::Room(const int server_fd, const int creator_fd)
     : server_fd_(server_fd), creator_fd_(creator_fd) {
@@ -13,7 +13,7 @@ Room::Room(const int server_fd, const int creator_fd)
 }
 
 void Room::ExitHandler(int signum) {
-  exit_flag_ = 1;
+  signal_exit_flag_ = 1;
 }
 
 Room::~Room() {
@@ -27,22 +27,24 @@ Room::~Room() {
     do {
       ret = read(server_fd_, buffer, sizeof(buffer));
     } while (ret > 0);
+    shutdown(server_fd_, SHUT_RDWR);
     close(server_fd_);
     syslog (LOG_NOTICE, "Server fd correctly closed in room");
   }
   syslog (LOG_NOTICE, "Room terminated");
 }
 
-void Room::CloseConnection(const int socket_fd) {
-  io_context_.DelEvent(socket_fd);
-  shutdown(socket_fd, SHUT_RDWR);
-  connections_.erase(socket_fd);
+void Room::CloseConnection(const int fd) {
+  std::cout << fd << " Deletion\n";
+  io_context_.DelEvent(fd);
+  shutdown(fd, SHUT_RDWR);
+  connections_.erase(fd);
   char buffer[4096];
   int ret;
   do {
-    ret = read(socket_fd, buffer, sizeof(buffer));
+    ret = read(fd, buffer, sizeof(buffer));
   } while (ret > 0);
-  close(socket_fd);
+  close(fd);
   syslog (LOG_NOTICE, "Connection closed");
 }
 
@@ -68,12 +70,14 @@ void Room::Run() {
   nw_connection.state = ASKING_LOGIN_SIZE;
   connections_[creator_fd_] = nw_connection;
   io_context_.AddEvent(WRITE_FD, CREATOR, creator_fd_);
-
   epoll_event* events;
-  while (!exit_flag_) {
+  std::cout << signal_exit_flag_ << " " << exit_flag_ << "\n";
+  while (!signal_exit_flag_ && !exit_flag_) {
     try {
+      std::cout << "Waiting\n";
       int event_num = io_context_.Wait(events);
       //syslog (LOG_WARNING, "Room events %d", event_num);
+      std::cout << event_num << " Events\n";
       if (state_ != PLAYING) {
         ManageEvents(event_num, events);
       } else {
@@ -88,8 +92,6 @@ void Room::Run() {
 
 void Room::RemovePlayer(const int fd) {
   players_.erase(fd);
-  connections_.erase(fd);
-  io_context_.DelEvent(fd);
   CloseConnection(fd);
   UpdatePlayerList();
 }
@@ -115,7 +117,7 @@ void Room::ManageEvents(const int event_num, epoll_event* events) {
     if (event->events & (EPOLLHUP | EPOLLERR | EPOLLPRI)) {
       if (data->fd_type == CREATOR) {
         syslog (LOG_WARNING, "Host error");
-        exit_flag_ = 1;
+        signal_exit_flag_ = 1;
         return;
       }
       CloseConnection(data->fd);
@@ -131,12 +133,16 @@ void Room::ManageEvents(const int event_num, epoll_event* events) {
       ManagePlayer(data->fd);
     }
     if (data->fd_type == CREATOR) {
-      if (connections_[data->fd].state != READY_TO_PLAY) {
-        ManagePlayer(data->fd);
-      } else {
-        ManageHost(data->fd);
+      try {
+        if (connections_[data->fd].state != READY_TO_PLAY) {
+          ManagePlayer(data->fd);
+        } else {
+          ManageHost(data->fd);
+        }
+      } catch(...) {
+        exit_flag_ = true;
+        return;
       }
-      return;
     }
     if (data->fd_type == SERVER) {
       try {
@@ -160,7 +166,7 @@ void Room::ManageGame(int event_num, epoll_event* events) {
     if (event->events & (EPOLLHUP | EPOLLERR | EPOLLPRI)) {
       if (data->fd_type == CREATOR) {
         syslog (LOG_WARNING, "Host error");
-        exit_flag_ = 1;
+        signal_exit_flag_ = 1;
         return;
       }
       CloseConnection(data->fd);
@@ -229,6 +235,7 @@ void Room::SendBuffers() {
 
 void Room::AddPlayer(const int fd) {
   syslog (LOG_WARNING, "Adding new player");
+  std::cout << fd << " player\n";
   TcpConnection<PlayerStates> nw_connection;
   nw_connection.state = ASKING_LOGIN_SIZE;
   nw_connection.key_state = READY_TO_PLAY;

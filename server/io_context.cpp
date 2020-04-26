@@ -42,10 +42,13 @@ void IOContext::MakeNotBlocking(const int fd) {
 void IOContext::SetEventType(const EventType type, epoll_event &event) {
   switch (type) {
   case READ_FD:
-    event.events = EPOLLIN; // 1
+    event.events = EPOLLIN | EPOLLRDHUP; // 1
     break;
   case WRITE_FD:
-    event.events = EPOLLOUT; // 4
+    event.events = EPOLLOUT | EPOLLRDHUP; // 4
+    break;
+  case READ_WRITE_FD:
+    event.events = EPOLLOUT | EPOLLIN | EPOLLRDHUP;
     break;
   }
 }
@@ -74,7 +77,7 @@ void IOContext::AddEvent(const EventType event_type,
 
 void IOContext::DelEvent(const int fd) {
   if (event_map_.find(fd) == event_map_.end()) {
-    throw std::logic_error("No such event in io_context");
+    return;
   }
 
   FdType type = event_map_[fd]->fd_type;
@@ -83,6 +86,7 @@ void IOContext::DelEvent(const int fd) {
 
   int ret = epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, fd, NULL);
   if (ret < 0) {
+    return;
     syslog(LOG_NOTICE, "Error while event deletion: %s", strerror(errno));
     throw std::runtime_error("Unable to delete event");
   }
@@ -103,7 +107,6 @@ void IOContext::ChangeEvent(const EventType new_type, const int fd) {
 
   event_map_[fd]->action_type = new_type;
   event.data.ptr = event_map_[fd];
-
 
   int ret = epoll_ctl(epoll_fd_, EPOLL_CTL_MOD, fd, &event);
   if (ret < 0) {

@@ -49,7 +49,8 @@ private:
   const int creator_fd_;
   RoomStates state_;
   std::unordered_map<int, TcpConnection<PlayerStates> > connections_;
-  static volatile sig_atomic_t exit_flag_;
+  static volatile sig_atomic_t signal_exit_flag_;
+  bool exit_flag_ = false;
   static void ExitHandler(int signum);
   void ConfigureSignals();
   void CloseConnection(int socket_fd);

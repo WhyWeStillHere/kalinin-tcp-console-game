@@ -22,6 +22,7 @@ GameServer::~GameServer() {
     int ret = fcntl(room.second.input_fd, F_GETFD);
     if (ret != -1) {
       pthread_kill(room.second.thread, SIGINT);
+      close(room.second.input_fd);
     } else {
       room.second.input_fd = -1;
     }
@@ -169,6 +170,7 @@ void GameServer::ManageEvents(const int event_num, epoll_event* events) {
         RoomInfo& room = rooms_.at(data->fd);
         pthread_join(room.thread, NULL);
         rooms_.erase(data->fd);
+        io_context_.DelEvent(data->fd);
       } else {
         CloseConnection(data->fd);
       }
@@ -188,6 +190,8 @@ void GameServer::ManageEvents(const int event_num, epoll_event* events) {
     if (data->fd_type == ROOM) {
       if (event->events & (EPOLLIN)) {
         rooms_[data->fd].state = PLAYING;
+        io_context_.DelEvent(data->fd);
+        break;
       }
       try {
         ConnectToRoom(data->fd);
@@ -209,7 +213,7 @@ void GameServer::ConnectToRoom(int fd) {
     }
     room.waiting_clients.pop_back();
   }
-  io_context_.DelEvent(fd);
+  io_context_.ChangeEvent(READ_FD, fd);
 }
 
 void GameServer::ManageState(int fd) {
@@ -273,7 +277,7 @@ void GameServer::ManageState(int fd) {
     room.waiting_clients.push_back(fd);
     ++room.participant_num;
     io_context_.DelEvent(fd);
-    io_context_.AddEvent(WRITE_FD, ROOM, room.input_fd);
+    io_context_.ChangeEvent(READ_WRITE_FD, room.input_fd);
   }
 }
 
@@ -297,6 +301,7 @@ void GameServer::CreateRoom(int fd) {
 
   pthread_create(&info.thread, NULL, RoomTread, (void*)args);
   rooms_[info.id] = info;
+  io_context_.AddEvent(READ_FD, ROOM, info.input_fd);
 }
 
 void* GameServer::RoomTread(void *arg) {
