@@ -254,8 +254,10 @@ void GameServer::ManageState(int fd) {
       return;
     } else if (command == CommandToManager::CREATE_ROOM) {
       state = CREATING_ROOM;
+      return;
     } else if (command == CommandToManager::JOIN_ROOM) {
       state = JOINING_ROOM;
+      return;
     } else {
       syslog (LOG_WARNING, "Error in receiving command");
       return;
