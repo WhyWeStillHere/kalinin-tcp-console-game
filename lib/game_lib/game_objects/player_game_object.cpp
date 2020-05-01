@@ -36,3 +36,7 @@ void PlayerObject::ResetMoveFl() {
 bool PlayerObject::IsAlive() const {
   return health_value_ > 0;
 }
+
+void PlayerObject::Kill() {
+  health_value_ = 0;
+}

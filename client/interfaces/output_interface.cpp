@@ -299,7 +299,8 @@ void OutputInterface::DrawMap(int x, int y, const GameMapInfo& map_info,
       }
     }
   }
-  if (player_x != -1 && player_y != -1) {
+  if (player_x != -1 && player_y != -1 &&
+      painter_->Get(x + player_x, y + player_y) == '@') {
     painter_->Set(x + player_x, y + player_y, 'P');
   }
 }

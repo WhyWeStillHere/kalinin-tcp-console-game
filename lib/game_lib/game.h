@@ -11,11 +11,9 @@ public:
   int GetUpdateWaitTime() const;
   void ShootProjectile(int player_id);
   void UpdateGame(int update_num = 1);
+  void KillPlayer(int player_id);
 
 private:
-  void UpdateMapInfo();
-  void UpdatePlayerInfo();
-  void UpdateGameInfo();
 
   std::shared_ptr<GameMap> map_;
   std::unordered_map<int, std::shared_ptr<PlayerObject> > players_;

@@ -10,6 +10,7 @@ Room::Room(const int server_fd, const int creator_fd)
     : server_fd_(server_fd), creator_fd_(creator_fd) {
   ConfigureSignals();
   state_ = WAITING;
+  host_.id = creator_fd_;
 }
 
 void Room::ExitHandler(int signum) {
@@ -35,7 +36,6 @@ Room::~Room() {
 }
 
 void Room::CloseConnection(const int fd) {
-  std::cout << fd << " Deletion\n";
   io_context_.DelEvent(fd);
   shutdown(fd, SHUT_RDWR);
   connections_.erase(fd);
@@ -169,11 +169,19 @@ void Room::ManageGame(int event_num, epoll_event* events) {
         signal_exit_flag_ = 1;
         return;
       }
+      if (data->fd_type == CLIENT) {
+        game_.KillPlayer(data->fd);
+      }
       CloseConnection(data->fd);
       continue;
     }
-    if (data->fd_type == CLIENT || data->fd_type == CREATOR) {
+    if (data->fd_type == CLIENT) {
+      try {
         ManagePlayerEvent(data->fd);
+      } catch(...) {
+        game_.KillPlayer(data->fd);
+        CloseConnection(data->fd);
+      }
     }
     if (data->fd_type == TIMER) {
         ApplyGameChanges(data->fd);

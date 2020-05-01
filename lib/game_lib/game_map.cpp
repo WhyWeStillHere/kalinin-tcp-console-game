@@ -58,6 +58,11 @@ GameMapInfo GameMap::GetInfo() {
   info.map.resize(width_, std::vector<char> (height_, ' '));
   for (int i = 0; i < width_; ++i) {
     for (int j = 0; j < height_; ++j) {
+      if (map_[i][j]->type_ == PLAYER) {
+          if (!std::static_pointer_cast<PlayerObject>(map_[i][j])->IsAlive()) {
+            Clear({i, j});
+          }
+      }
       info.map[i][j] = map_[i][j]->type_;
     }
   }

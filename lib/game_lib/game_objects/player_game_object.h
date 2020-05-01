@@ -13,6 +13,7 @@ public:
   bool Hit(int hit_damage);
   void SetMoveFl();
   void ResetMoveFl();
+  void Kill();
 
 public:
   MapPoint position_;

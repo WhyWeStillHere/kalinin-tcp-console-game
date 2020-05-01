@@ -33,6 +33,9 @@ GameInfo Game::GetInfo() {
 bool Game::MovePlayer(int player_id, Direction direction) {
   MapPoint new_position;
   std::shared_ptr<PlayerObject> player(players_[player_id]);
+  if (!player->IsAlive()) {
+    return false;
+  }
   MapPoint current_position = player->position_;
 
   new_position = GetNewPosition(current_position, direction);
@@ -50,8 +53,17 @@ int Game::GetUpdateWaitTime() const {
   return static_cast<int>(step_standard_delay_ * 1000);
 }
 
+void Game::KillPlayer(int player_id) {
+  std::shared_ptr<PlayerObject> player(players_[player_id]);
+  player->Kill();
+}
+
 void Game::UpdateGame(const int update_num) {
+  std::vector<int> dead_players;
   for (auto& player: players_) {
+    if (!player.second->IsAlive()) {
+      continue;
+    }
     if (player.second->IsMoved()) {
       player.second->Hit(movement_health_drop_);
       player.second->Hit(stay_health_drop_ * (update_num - 1));
