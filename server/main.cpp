@@ -1,6 +1,7 @@
+#include "../lib/game_settings.h"
+#include "server.h"
 #include <cstdio>
 #include <cstdlib>
-#include "server.h"
 
 int main(int argc, char* argv[]) {
     char* ip_str = argv[1];
@@ -11,8 +12,11 @@ int main(int argc, char* argv[]) {
       return EXIT_FAILURE;
     }
 
+    // Load settings from default file
+    GetCurrentSettings()->LoadSettings();
+
     // Program can be terminated here
-    GameServer server(DAEMON);
+    GameServer server(PROGRAM);
     server.Init(ip_str, port);
     server.Run();
     return EXIT_SUCCESS;
