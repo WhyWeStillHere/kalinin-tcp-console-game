@@ -8,7 +8,8 @@ int main(int argc, char* argv[]) {
     int port = static_cast<int>(strtol(argv[2], NULL, 10));
 
     if (argc <= 2) {
-      perror("To few args\n");
+      fprintf(stderr,"\nThis is game server.\n\n"
+                     "We need host_name and port number in argumens of prorgam\n\n");
       return EXIT_FAILURE;
     }
 
