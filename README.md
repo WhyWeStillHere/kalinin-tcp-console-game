@@ -18,11 +18,13 @@ You can adjust game settings, by changing server_settings file (More info below)
 
 To launch server use command
 ```
-./server [ip address] [port]
+./server [port] [daemon]
 ```
-Server will accept connections on this address and port
+Server will accept connections on this port
 
-Default: ip address = 127.0.0.1 port = 9091
+If you write daemon, server will start as daemon
+
+Default: port = 9091
 
 On default server starts as program
 
