@@ -151,7 +151,6 @@ void GameServer::Run() {
   while (!exit_flag_) {
     try {
       int event_num = io_context_.Wait(events);
-      syslog (LOG_WARNING, "Events %d", event_num);
       ManageEvents(event_num, events);
     } catch (...) {
       syslog (LOG_WARNING, "Error in server runtime");
@@ -189,8 +188,10 @@ void GameServer::ManageEvents(const int event_num, epoll_event* events) {
     }
     if (data->fd_type == ROOM) {
       if (event->events & (EPOLLIN)) {
+        int read_command;
+        read(data->fd, &read_command, sizeof(int));
         rooms_[data->fd].state = PLAYING;
-        io_context_.DelEvent(data->fd);
+        io_context_.ChangeEvent(READ_FD, data->fd);
         break;
       }
       try {
@@ -328,16 +329,16 @@ void GameServer::AddNewConnection() {
   } while (true);
 }
 
-void GameServer::CloseConnection(const int socket_fd) {
-  io_context_.DelEvent(socket_fd);
-  shutdown(socket_fd, SHUT_RDWR);
-  connections_.erase(socket_fd);
+void GameServer::CloseConnection(const int fd) {
+  io_context_.DelEvent(fd);
+  shutdown(fd, SHUT_RDWR);
+  connections_.erase(fd);
   char buffer[4096];
   int ret;
   do {
-    ret = read(socket_fd, buffer, sizeof(buffer));
+    ret = read(fd, buffer, sizeof(buffer));
   } while (ret > 0);
-  close(socket_fd);
+  close(fd);
   syslog (LOG_NOTICE, "Connection closed");
 }
 

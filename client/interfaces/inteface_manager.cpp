@@ -70,15 +70,19 @@ bool InterfaceManager::LobbyPage(std::vector<PlayerInfo> &player_list, bool is_h
 
 void InterfaceManager::InitGamePage(const GameInfo &game_info,
                                     const std::vector<PlayerInfo>& players,
-                                    int player_id) {
-  out_interface_.DrawGameScreen(game_info, players, player_id);
-
+                                    int player_id, const size_t field_of_view) {
+  out_interface_.DrawGameScreen(game_info, players, player_id, field_of_view);
 }
 
 CommandToGame InterfaceManager::UpdateGamePage(const GameInfo &game_info,
                                                const std::vector<PlayerInfo> &players,
-                                               int player_id) {
-  InitGamePage(game_info, players, player_id);
+                                               const int player_id,
+                                               const size_t field_of_view) {
+  out_interface_.SetScene(ScreenScene::GAME_SCREEN);
+  bool finish = out_interface_.DrawGameScreen(game_info, players, player_id, field_of_view);
+  if (finish) {
+    return GAME_ENDED;
+  }
   while (true) {
     int c = in_interface_.ReadLetterNonBlock();
     switch (c) {
@@ -143,4 +147,26 @@ std::string InterfaceManager::ReadWriteCursor(int MAX_INPUT_SIZE,
       break;
     }
   }
+}
+
+void InterfaceManager::ErrorScreen(const std::string& err) {
+  try {
+    out_interface_.SetScene(ScreenScene::END_SCREEN);
+    out_interface_.DrawErrorScreen(err);
+    in_interface_.PressAnyKey();
+  } catch(...) {
+  }
+}
+
+void InterfaceManager::GoodbyeScreen() {
+  try {
+    out_interface_.SetScene(ScreenScene::END_SCREEN);
+    out_interface_.DrawGoodbyeScreen();
+    in_interface_.PressAnyKey();
+  } catch(...) {
+  }
+}
+
+void InterfaceManager::WriteError(const std::string &err) {
+  out_interface_.WriteError(err);
 }

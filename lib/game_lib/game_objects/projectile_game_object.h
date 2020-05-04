@@ -16,11 +16,13 @@ public:
   bool Move();
   MapPoint GetPosition() const;
   MapPoint SpawnPosition();
+  int GetDamageValue() const;
 
 private:
   void FindTarget();
 
   int damage_value_ = 20;
+  int movements_left = 10;
   MapPoint position_;
   std::shared_ptr<PlayerObject> target_;
   std::weak_ptr<GameMap> map_;

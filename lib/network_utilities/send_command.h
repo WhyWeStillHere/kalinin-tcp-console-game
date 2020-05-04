@@ -34,7 +34,8 @@ enum CommandToGame {
   MOVE_DOWN,
   MOVE_LEFT,
   MOVE_RIGHT,
-  SHOOT
+  SHOOT,
+  GAME_ENDED
 };
 
 

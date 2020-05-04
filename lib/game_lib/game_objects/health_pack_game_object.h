@@ -1,9 +1,11 @@
 #include "game_object.h"
 
-class HealthPack: public GameObject {
+class HealthPackObject : public GameObject {
 public:
-  HealthPack();
-  HealthPack(int value);
+  HealthPackObject();
+  HealthPackObject(int value);
+
+  int GetValue();
 
 private:
   const int health_value_ = 20;

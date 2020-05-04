@@ -52,7 +52,7 @@ public:
 
 private:
   void ConfigureDaemon();
-  void CloseConnection(int socket_fd);
+  void CloseConnection(int fd);
   static void ExitHandler(int signum);
   void ConfigureSignals();
   void ManageEvents(int event_num, epoll_event* events);

@@ -1,9 +1,13 @@
 #include "health_pack_game_object.h"
 
-HealthPack::HealthPack() : GameObject(HEALTH_PACK) {
+HealthPackObject::HealthPackObject() : GameObject(HEALTH_PACK) {
 }
 
-HealthPack::HealthPack(const int value) :
+HealthPackObject::HealthPackObject(const int value) :
     GameObject(HEALTH_PACK),
     health_value_(value) {
+}
+
+int HealthPackObject::GetValue() {
+  return health_value_;
 }

@@ -38,4 +38,7 @@ private:
   void ConfigureSignals();
   static void ExitHandler(int signum);
   InterfaceManager interface_manager_;
+
+  const size_t field_of_view_ = 6;
+  bool end_of_game = false;
 };

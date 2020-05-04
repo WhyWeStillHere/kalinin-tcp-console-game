@@ -71,13 +71,10 @@ void Room::Run() {
   connections_[creator_fd_] = nw_connection;
   io_context_.AddEvent(WRITE_FD, CREATOR, creator_fd_);
   epoll_event* events;
-  std::cout << signal_exit_flag_ << " " << exit_flag_ << "\n";
   while (!signal_exit_flag_ && !exit_flag_) {
     try {
-      std::cout << "Waiting\n";
       int event_num = io_context_.Wait(events);
       //syslog (LOG_WARNING, "Room events %d", event_num);
-      std::cout << event_num << " Events\n";
       if (state_ != PLAYING) {
         ManageEvents(event_num, events);
       } else {
@@ -117,7 +114,7 @@ void Room::ManageEvents(const int event_num, epoll_event* events) {
     if (event->events & (EPOLLHUP | EPOLLERR | EPOLLPRI)) {
       if (data->fd_type == CREATOR) {
         syslog (LOG_WARNING, "Host error");
-        signal_exit_flag_ = 1;
+        exit_flag_ = 1;
         return;
       }
       CloseConnection(data->fd);
@@ -166,7 +163,7 @@ void Room::ManageGame(int event_num, epoll_event* events) {
     if (event->events & (EPOLLHUP | EPOLLERR | EPOLLPRI)) {
       if (data->fd_type == CREATOR) {
         syslog (LOG_WARNING, "Host error");
-        signal_exit_flag_ = 1;
+        exit_flag_ = 1;
         return;
       }
       if (data->fd_type == CLIENT) {
@@ -185,6 +182,10 @@ void Room::ManageGame(int event_num, epoll_event* events) {
     }
     if (data->fd_type == TIMER) {
         ApplyGameChanges(data->fd);
+        if (game_.IsEnded()) {
+          exit_flag_ = true;
+          break;
+        }
     }
   }
 }
@@ -243,7 +244,6 @@ void Room::SendBuffers() {
 
 void Room::AddPlayer(const int fd) {
   syslog (LOG_WARNING, "Adding new player");
-  std::cout << fd << " player\n";
   TcpConnection<PlayerStates> nw_connection;
   nw_connection.state = ASKING_LOGIN_SIZE;
   nw_connection.key_state = READY_TO_PLAY;
@@ -273,8 +273,8 @@ void Room::ManageHost(const int fd) {
     state_ = STARTING;
     player_state = STARTING_TO_PLAY;
     io_context_.DelEvent(server_fd_);
-    shutdown(server_fd_, SHUT_RDWR);
-    close(server_fd_);
+    int start_game = 1;
+    write(server_fd_, &start_game, sizeof(int));
     syslog (LOG_WARNING, "Starting game");
     for (auto& connection: connections_) {
       if (connection.first != creator_fd_) {
@@ -328,7 +328,6 @@ void Room::ManagePlayer(const int fd) {
         vect.push_back(player_info.second);
       }
     }
-    syslog (LOG_WARNING, "Player num: %d", vect.size());
     write_vector<PlayerInfo>(buffer, vect);
     player_state = WRITE_PLAYERS;
   }
@@ -346,8 +345,6 @@ void Room::ManagePlayer(const int fd) {
       } else {
         player_state = READY_TO_PLAY;
         io_context_.ChangeEvent(READ_FD, fd);
-
-        syslog (LOG_WARNING, "Everething is OK");
         return;
       }
     }

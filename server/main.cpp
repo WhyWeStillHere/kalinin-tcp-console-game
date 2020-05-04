@@ -4,20 +4,22 @@
 #include <cstdlib>
 
 int main(int argc, char* argv[]) {
-    char* ip_str = argv[1];
-    int port = static_cast<int>(strtol(argv[2], NULL, 10));
-
-    if (argc <= 2) {
-      perror("To few args\n");
-      return EXIT_FAILURE;
+  int port = 9091;
+  ServerStartUpType type = PROGRAM;
+  for (int i = 1; i < argc; ++i) {
+    if (strcmp(argv[i], "daemon") == 0) {
+      type = DAEMON;
+    } else {
+      port = static_cast<int>(strtol(argv[i], NULL, 10));
     }
+  }
 
-    // Load settings from default file
-    GetCurrentSettings()->LoadSettings();
+  // Load settings from default file
+  GetCurrentSettings()->LoadSettings();
 
-    // Program can be terminated here
-    GameServer server(PROGRAM);
-    server.Init(ip_str, port);
-    server.Run();
-    return EXIT_SUCCESS;
+  // Program can be terminated here
+  GameServer server(type);
+  server.Init("127.0.0.1", port);
+  server.Run();
+  return EXIT_SUCCESS;
 }
