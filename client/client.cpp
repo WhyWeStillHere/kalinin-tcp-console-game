@@ -69,19 +69,26 @@ void Client::JoinRoom(int room_id, const std::vector<RoomInfo> &rooms_info) {
         }
       }
     }
-    std::cout << player_id << "\n";
-    interface_manager_.InitGamePage(game_info, players_info, player_id);
+    interface_manager_.InitGamePage(game_info, players_info, player_id,
+                                    field_of_view_);
     int count = 0;
     while (true) {
       ioctl(socket_, FIONREAD, &count);
       if (count != 0) {
         game_info.Read(socket_);
       }
-      CommandToGame interface_command(interface_manager_.UpdateGamePage(game_info, players_info, player_id));
+      CommandToGame interface_command(interface_manager_.UpdateGamePage(
+          game_info, players_info, player_id, field_of_view_));
+      if (interface_command == GAME_ENDED) {
+        sleep_millisecond(6000);
+        break;
+      }
       if (interface_command != UNKNOWN_INPUT) {
         WriteCommand<CommandToGame>(interface_command, socket_);
       }
     }
+    end_of_game = true;
+    interface_manager_.GoodbyeScreen();
   } else {
     last_error_ = "Incorrect room ID";
   }
@@ -99,9 +106,14 @@ void Client::CreateRoom() {
       auto command = ReadCommand<CommandToPlayer>(socket_);
       players_info = LoadPlayers();
     }
-    bool start_fl = interface_manager_.LobbyPage(players_info, true);
     sleep_millisecond(50);
+    bool start_fl = interface_manager_.LobbyPage(players_info, true);
     if (start_fl) {
+      if (players_info.size() < 3) {
+        interface_manager_.WriteError("To few players, needed at least 2");
+        sleep_millisecond(2000);
+        continue;
+      }
       break;
     }
   }
@@ -117,21 +129,27 @@ void Client::CreateRoom() {
       }
     }
   }
-  interface_manager_.InitGamePage(game_info, players_info, player_id);
+  interface_manager_.InitGamePage(game_info, players_info, player_id,
+                                  field_of_view_);
   while (true) {
     ioctl(socket_, FIONREAD, &count);
     if (count != 0) {
       game_info.Read(socket_);
     }
-    CommandToGame interface_command(interface_manager_.UpdateGamePage(game_info, players_info, player_id));
+    CommandToGame interface_command(interface_manager_.UpdateGamePage(
+        game_info, players_info, player_id, field_of_view_));
+    if (interface_command == GAME_ENDED) {
+      sleep_millisecond(6000);
+      break;
+    }
     if (interface_command != UNKNOWN_INPUT) {
       WriteCommand<CommandToGame>(interface_command, socket_);
     }
   }
+  end_of_game = true;
+  interface_manager_.GoodbyeScreen();
 }
 
-
-// TODO: ERROR PARSING
 void Client::Run(const char* ip_string, const int port) {
   try {
     interface_manager_.Start();
@@ -141,77 +159,29 @@ void Client::Run(const char* ip_string, const int port) {
 
     std::vector<RoomInfo> rooms_info = LoadRooms();
 
-    while (true) {
+    while (!end_of_game) {
       CommandToManager command = interface_manager_.MainServerPage(rooms_info, last_error_);
       last_error_.clear();
       if (command == JOIN_ROOM) {
         JoinRoom(interface_manager_.GetRoomId(), rooms_info);
-        break;
+        continue;
       } else if (command == REFRESH_ROOMS) {
         WriteCommand(CommandToManager::REFRESH_ROOMS, socket_);
         rooms_info = LoadRooms();
         continue;
       } else if (command == CREATE_ROOM) {
         CreateRoom();
-        break;
+        continue;
       }
     }
-
   } catch (int err_code) {
     if (err_code == -1) {
       return;
     }
-    throw std::current_exception();
+    interface_manager_.ErrorScreen("Terminal error occurred");
+  } catch (...) {
+    interface_manager_.ErrorScreen("Server error occurred");
   }
-  return;
-
-  std::vector<RoomInfo> rooms_info;
-  uint32_t room_number;
-  std::cout << "Prepare for read\n";
-  try {
-    read_uint32_by_char(socket_, &room_number);
-  } catch(...) {
-    perror("Server read error");
-    return;
-  }
-  rooms_info.resize(room_number);
-  std::cout << room_number << " LOL\n";
-
-  std::vector<RoomInfo> rooms(room_number);
-  for (int i = 0; i < room_number; ++i) {
-    rooms[i].Read(socket_);
-    std::cout << rooms[i].id << "\n";
-  }
-  int com = 0;
- // std::cin >> com; // 0 - CREATE_ROOM, 1 - JOIN_ROOM
-  CommandToManager command;
-  if (com == 0) {
-    command = CREATE_ROOM;
-  }
-
-
-  if (command == JOIN_ROOM) {
-    WriteCommand(CommandToManager::JOIN_ROOM, socket_);
-
-    std::string login = "PussyDestroyerXXX";
-    //std::cin >> login;
-
-    uint32_t login_size = login.size();
-    write_uint32(socket_, &login_size);
-    write_buffer(socket_, login.data(), static_cast<size_t>(login_size));
-  } else if (command == CREATE_ROOM) {
-    WriteCommand(CommandToManager::CREATE_ROOM, socket_);
-    std::string login;
-    std::cin >> login;
-    std::cout << "Lol";
-    uint32_t login_size = login.size();
-    write_uint32(socket_, &login_size);
-    write_buffer(socket_, login.data(), static_cast<size_t>(login_size));
-    while (1) {
-      1==1;
-    }
-  }
-  return;
 }
 
 void Client::ExitHandler(int signum) {

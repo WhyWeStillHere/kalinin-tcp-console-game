@@ -1,4 +1,5 @@
 #include "game.h"
+#include "game_objects/health_pack_game_object.h"
 
 void Game::Init(const std::vector<PlayerInfo>& players) {
   map_ = std::make_shared<GameMap>();
@@ -43,6 +44,18 @@ bool Game::MovePlayer(int player_id, Direction direction) {
   if (!map_->IsAvailable(new_position)) {
     return false;
   }
+  std::shared_ptr<GameObject> game_object(map_->GetObject(new_position));
+  if (game_object->type_ == PROJECTILE) {
+    std::shared_ptr<ProjectileObject> projectile(
+        std::static_pointer_cast<ProjectileObject>(game_object));
+    player->Hit(projectile->GetDamageValue());
+    projectiles_.erase(projectile);
+  }
+  if (game_object->type_ == HEALTH_PACK) {
+    std::shared_ptr<HealthPackObject> health_pack(
+        std::static_pointer_cast<HealthPackObject>(game_object));
+    player->Hit(-health_pack->GetValue());
+  }
   map_->MoveObject(current_position, new_position);
   player->position_ = new_position;
   player->SetMoveFl();
@@ -60,6 +73,7 @@ void Game::KillPlayer(int player_id) {
 
 void Game::UpdateGame(const int update_num) {
   std::vector<int> dead_players;
+  int alive_players = 0;
   for (auto& player: players_) {
     if (!player.second->IsAlive()) {
       continue;
@@ -73,10 +87,25 @@ void Game::UpdateGame(const int update_num) {
     player.second->ResetMoveFl();
   }
 
+  std::vector<std::shared_ptr<ProjectileObject> > to_remove;
   for (auto& projectile: projectiles_) {
     if (!projectile->Move()) {
       map_->Clear(projectile->GetPosition());
+      to_remove.push_back(projectile);
     }
+  }
+
+  for (auto& projectile: to_remove) {
+    projectiles_.erase(projectile);
+  }
+
+  for (auto& player: players_) {
+    if (player.second->IsAlive()) {
+      ++alive_players;
+    }
+  }
+  if (alive_players <= 1) {
+    is_ended_ = true;
   }
 }
 
@@ -86,9 +115,24 @@ void Game::ShootProjectile(int player_id) {
                                                        player->position_,
                                                        hit_value_);
   MapPoint spawn_place = bullet_ptr->SpawnPosition();
-  if (spawn_place.x == -1 && spawn_place.y == -1) {
+  if (spawn_place.x == -1 && spawn_place.y == -1 ||
+      spawn_place.x == player->position_.x && spawn_place.y == player->position_.y) {
+    return;
+  }
+  std::shared_ptr<GameObject> game_object(map_->GetObject(spawn_place));
+  if (game_object->type_ == PROJECTILE) {
+    return;
+  }
+  if (game_object->type_ == PLAYER) {
+    std::shared_ptr<PlayerObject> player(
+        std::static_pointer_cast<PlayerObject>(game_object));
+    player->Hit(bullet_ptr->GetDamageValue());
     return;
   }
   map_->SetObject(spawn_place, bullet_ptr);
-  projectiles_.push_back(std::move(bullet_ptr));
+  projectiles_.insert(std::move(bullet_ptr));
+}
+
+bool Game::IsEnded() {
+  return is_ended_;
 }

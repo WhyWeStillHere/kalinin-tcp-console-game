@@ -16,10 +16,15 @@ public:
   int GetRoomId();
   bool LobbyPage(std::vector<PlayerInfo>& player_list, bool is_host = false);
   void InitGamePage(const GameInfo &game_info,
-                    const std::vector<PlayerInfo>& players, int player_id);
+                    const std::vector<PlayerInfo>& players, int player_id,
+                    size_t field_of_view);
   CommandToGame UpdateGamePage(const GameInfo &game_info,
-                      const std::vector<PlayerInfo>& players, int player_id);
+                      const std::vector<PlayerInfo>& players, int player_id,
+                      size_t field_of_view);
 
+  void ErrorScreen(const std::string& err);
+  void WriteError(const std::string& err);
+  void GoodbyeScreen();
 
 private:
   std::string ReadWriteCursor(int MAX_INPUT_SIZE = -1, bool digit_fl = true,

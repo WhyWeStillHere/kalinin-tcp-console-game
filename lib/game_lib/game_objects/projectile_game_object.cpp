@@ -211,6 +211,10 @@ bool ProjectileObject::Move() {
   if (!IsTargetAvailable()) {
     return false;
   }
+  --movements_left;
+  if (movements_left <= 0) {
+    return false;
+  }
   Direction move_direction = TargetDirection();
   if (move_direction == UNKNOWN_DIRECTION) {
     return false;
@@ -231,4 +235,8 @@ bool ProjectileObject::Move() {
 
 MapPoint ProjectileObject::GetPosition() const {
   return position_;
+}
+
+int ProjectileObject::GetDamageValue() const {
+  return damage_value_;
 }

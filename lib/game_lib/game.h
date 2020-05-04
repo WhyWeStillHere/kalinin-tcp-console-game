@@ -2,6 +2,7 @@
 #include "../info_structures/player_info.h"
 #include "game_objects/projectile_game_object.h"
 #include <unordered_map>
+#include <unordered_set>
 
 class Game {
 public:
@@ -12,12 +13,12 @@ public:
   void ShootProjectile(int player_id);
   void UpdateGame(int update_num = 1);
   void KillPlayer(int player_id);
+  bool IsEnded();
 
 private:
-
   std::shared_ptr<GameMap> map_;
   std::unordered_map<int, std::shared_ptr<PlayerObject> > players_;
-  std::vector<std::shared_ptr<ProjectileObject> > projectiles_;
+  std::unordered_set<std::shared_ptr<ProjectileObject> > projectiles_;
 
   GameInfo game_info_;
 
@@ -29,4 +30,5 @@ private:
   double mining_time_;
   double step_standard_delay_;
   double moratory_duration_;
+  bool is_ended_{false};
 };

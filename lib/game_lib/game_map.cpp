@@ -29,7 +29,7 @@ void GameMap::Init() {
     }
   }
   for (const auto& item: items) {
-    map_[item.x][item.y] = std::make_shared<HealthPack>(item.value);
+    map_[item.x][item.y] = std::make_shared<HealthPackObject>(item.value);
   }
 }
 

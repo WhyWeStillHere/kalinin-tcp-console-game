@@ -13,6 +13,7 @@ enum ScreenScene {
   MAIN_SERVER_SCREEN,
   LOBBY_SCREEN,
   GAME_SCREEN,
+  END_SCREEN,
   UNKNOWN_SCREEN
 };
 
@@ -22,6 +23,8 @@ public:
   ~OutputInterface();
 
   void DrawWelcomeScreen();
+  void DrawErrorScreen(const std::string& error);
+  void DrawGoodbyeScreen();
   int CheckWindowResize();
   void DrawLoginScreen();
   void WriteSymbol(char c);
@@ -31,11 +34,11 @@ public:
   void DrawLobbyScreen(const std::vector<PlayerInfo>& player_list,
                        bool is_host = false);
   void ReadRoomId();
-  void DrawGameScreen(const GameInfo& game_info,
+  bool DrawGameScreen(const GameInfo& game_info,
                       const std::vector<PlayerInfo>& players,
-                      int player_id);
+                      int player_id, size_t field_of_view);
   void DrawMap(int x, int y, const GameMapInfo& map_info,
-               int player_x, int player_y);
+               int player_x, int player_y, size_t filed_of_view);
 
   void WriteError(const std::string& error);
 

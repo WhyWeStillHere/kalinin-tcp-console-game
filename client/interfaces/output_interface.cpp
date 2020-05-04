@@ -42,6 +42,38 @@ void OutputInterface::DrawWelcomeScreen() {
   painter_->ApplyDrawing();
 }
 
+void OutputInterface::DrawGoodbyeScreen() {
+  ClearScreen();
+  painter_->HideCursor();
+  painter_->DrawRectangle(0.25, 0.333, 0.75, 0.666,
+                          ':', '=');
+  char str_buffer[4096];
+  strcpy(str_buffer, "Thanks for playing!");
+  painter_->DrawStringCenter(0.5, 0.4, str_buffer, strlen(str_buffer));
+  strcpy(str_buffer, "Press any key");
+  painter_->DrawStringCenter(0.5, 0.5, str_buffer, strlen(str_buffer));
+  painter_->ApplyDrawing();
+}
+
+void OutputInterface::DrawErrorScreen(const std::string& error) {
+  ClearScreen();
+  painter_->HideCursor();
+
+  painter_->DrawRectangle(0.25, 0.333, 0.75, 0.666,
+                          ':', '=');
+
+  char str_buffer[4096];
+  strcpy(str_buffer, "Sorry error occurred");
+  painter_->DrawStringCenter(0.5, 0.4, str_buffer, strlen(str_buffer));
+  strcpy(str_buffer, "Error: " );
+  strcpy(str_buffer + strlen(str_buffer), error.data());
+  painter_->DrawStringCenter(0.5, 0.48, str_buffer, strlen(str_buffer));
+  strcpy(str_buffer, "Press any key to quit" );
+  painter_->DrawStringCenter(0.5, 0.56, str_buffer, strlen(str_buffer));
+
+  painter_->ApplyDrawing();
+}
+
 void OutputInterface::ClearScreen() {
   if (!CheckWindowResize()) {
     painter_->ClearScreen();
@@ -166,9 +198,9 @@ void OutputInterface::WriteError(const std::string &error) {
     painter_->RemoveStringCenter(0.2, 0.9, out.size());
     break;
   case LOBBY_SCREEN:
-    painter_->DrawStringCenter(0.2, 0.9, out.data(), out.size());
+    painter_->DrawString(0.43, 0.84, out.data(), out.size());
     painter_->ApplyDrawing();
-    painter_->RemoveStringCenter(0.2, 0.9, out.size());
+    painter_->RemoveString(0.43, 0.84, out.size());
     break;
   }
 }
@@ -224,9 +256,10 @@ void OutputInterface::DrawLobbyScreen(const std::vector<PlayerInfo>& player_list
   painter_->ApplyDrawing();
 }
 
-void OutputInterface::DrawGameScreen(const GameInfo &game_info,
+bool OutputInterface::DrawGameScreen(const GameInfo &game_info,
                                      const std::vector<PlayerInfo>& players,
-                                     int player_id) {
+                                     const int player_id,
+                                     const size_t filed_of_view) {
   painter_->HideCursor();
   painter_->ClearScreen();
 
@@ -252,12 +285,18 @@ void OutputInterface::DrawGameScreen(const GameInfo &game_info,
   sprintf(str_buffer, " Current players: ");
   painter_->DrawString(1, 3, str_buffer, strlen(str_buffer));
   std::vector<std::string> lines;
+  int alive_players = 0;
   int player_x = -1, player_y = -1;
   for (int i = 1; i < players.size(); ++i) {
     for (const auto& player: game_info.players_info) {
       if (player.id == players[i].id) {
         std::ostringstream ss;
-        ss << " Player " << players[i].login << " HP: " << player.health_value;
+        if (player.health_value != 0) {
+          ss << " Player " << players[i].login << " HP: " << player.health_value;
+          ++alive_players;
+        } else {
+          ss << " Player " << players[i].login << " Dead";
+        }
         lines.push_back(ss.str());
         if (player_id == player.id) {
           player_x = player.x_coord;
@@ -267,20 +306,46 @@ void OutputInterface::DrawGameScreen(const GameInfo &game_info,
       }
     }
   }
+  if (alive_players <= 1) {
+    lines.clear();
+    for (int i = 1; i < players.size(); ++i) {
+      for (const auto& player: game_info.players_info) {
+        if (player.id == players[i].id) {
+          std::ostringstream ss;
+          if (player.health_value != 0) {
+            ss << " Player " << players[i].login << " Winner";
+          } else {
+            ss << " Player " << players[i].login << " Loser";
+          }
+          lines.push_back(ss.str());
+          if (player_id == player.id) {
+            player_x = player.x_coord;
+            player_y = player.y_coord;
+          }
+          break;
+        }
+      }
+    }
+  }
   DrawList(0, 4, cross_vert_line, y_max, lines);
 
   // Draw map
-  DrawMap(cross_vert_line + 2 , 2, game_info.map, player_x, player_y);
+  DrawMap(cross_vert_line + 2 , 2, game_info.map, player_x, player_y,
+          filed_of_view);
 
   painter_->DrawFrame();
   painter_->ApplyDrawing();
+  return alive_players <= 1;
 }
 
 void OutputInterface::DrawMap(int x, int y, const GameMapInfo& map_info,
-                              int player_x, int player_y) {
-  for (int i = 0; i < map_info.map.size(); ++i) {
-    for (int j = 0; j < map_info.map[i].size(); ++j) {
-      switch (map_info.map[i][j]) {
+                              int player_x, int player_y,
+                              const size_t filed_of_view) {
+  if (player_x == -1 || player_y == -1
+      || map_info.map[player_x][player_y] != GameObjectType::PLAYER) {
+    for (int i = 0; i < map_info.map.size(); ++i) {
+      for (int j = 0; j < map_info.map[i].size(); ++j) {
+        switch (map_info.map[i][j]) {
         case GameObjectType::PLAYER:
           painter_->Set(x + i, y + j, '@');
           break;
@@ -292,16 +357,41 @@ void OutputInterface::DrawMap(int x, int y, const GameMapInfo& map_info,
           break;
         case GameObjectType::PROJECTILE:
           painter_->Set(x + i, y + j, 'o');
-        break;
+          break;
         default:
           painter_->Set(x + i, y + j, '?');
           break;
+        }
       }
     }
-  }
-  if (player_x != -1 && player_y != -1 &&
-      painter_->Get(x + player_x, y + player_y) == '@') {
-    painter_->Set(x + player_x, y + player_y, 'P');
+  } else {
+    for (int i = std::max(0, player_x - static_cast<int>(filed_of_view)), x_pos = 0;
+         i < std::min(map_info.map.size(), player_x + filed_of_view); ++i, ++x_pos) {
+      for (int j = std::max(0, player_y - static_cast<int>(filed_of_view)), y_pos = 0;
+           j < std::min(map_info.map[i].size(), player_y + filed_of_view); ++j, ++y_pos) {
+        switch (map_info.map[i][j]) {
+        case GameObjectType::PLAYER:
+          if (i == player_x && j == player_y) {
+            painter_->Set(x + x_pos, y + y_pos, 'P');
+          } else {
+            painter_->Set(x + x_pos, y + y_pos, '@');
+          }
+          break;
+        case GameObjectType::VOID:
+          painter_->Set(x + x_pos, y + y_pos, ' ');
+          break;
+        case GameObjectType::WALL:
+          painter_->Set(x + x_pos, y + y_pos, '#');
+          break;
+        case GameObjectType::PROJECTILE:
+          painter_->Set(x + x_pos, y + y_pos, 'o');
+          break;
+        default:
+          painter_->Set(x + x_pos, y + y_pos, '?');
+          break;
+        }
+      }
+    }
   }
 }
 

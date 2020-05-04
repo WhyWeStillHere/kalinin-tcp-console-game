@@ -137,7 +137,7 @@ void GameSettings::LoadSettings(const char *file_path) {
       throw std::runtime_error("Incorrect item info");
     }
     if (item.x <= 0 || item.x >= map_width_ || item.y <= 0 ||
-        item.y >= map_height_ || map_[item.x][item.y] != ' ') {
+        item.y >= map_height_ || map_[item.y][item.x] != ' ') {
       throw std::runtime_error("Incorrect item position");
     }
     items_.push_back(item);
