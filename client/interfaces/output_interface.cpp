@@ -88,6 +88,9 @@ void OutputInterface::DrawLoginScreen() {
                           ':', '=');
 
   char str_buffer[4096];
+  sprintf(str_buffer, "You can press Ctrl+q to quit");
+  painter_->DrawStringCenter(0.5, 0.24, str_buffer, strlen(str_buffer));
+
   sprintf(str_buffer, "Write your login:");
   painter_->DrawStringCenter(0.5, 0.43, str_buffer, strlen(str_buffer));
   painter_->ApplyDrawing();
@@ -188,7 +191,7 @@ void OutputInterface::WriteError(const std::string &error) {
   std::string out = "Error: " + error;
   switch (current_scene_) {
   case LOGIN_SCREEN:
-    painter_->DrawStringCenter(0.5, 0.2, out.data(), out.size());
+    painter_->DrawStringCenter(0.5, 0.75, out.data(), out.size());
     painter_->ApplyDrawing();
     painter_->RemoveStringCenter(0.5, 0.2, out.size());
     break;
@@ -275,6 +278,12 @@ bool OutputInterface::DrawGameScreen(const GameInfo &game_info,
   painter_->DrawHorizontalLine(cross_horizontal_line + 1, cross_vert_line, x_max, '_');
   painter_->DrawVerticalLine(cross_vert_line, 0, y_max, '|');
 
+  sprintf(str_buffer,"Movement - WASD or Arrow Keys");
+  painter_->DrawString(cross_vert_line + 2,cross_horizontal_line + 3,
+                             str_buffer, strlen(str_buffer));
+  sprintf(str_buffer,"Shoot - Spacebar or K");
+  painter_->DrawString(cross_vert_line + 2,cross_horizontal_line + 4,
+                       str_buffer, strlen(str_buffer));
 
   painter_->DrawRectangle(0, 0, cross_vert_line, 2);
   sprintf(str_buffer, " Host: %s", players.front().login.data());
