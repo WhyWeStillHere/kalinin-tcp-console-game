@@ -88,18 +88,23 @@ CommandToGame InterfaceManager::UpdateGamePage(const GameInfo &game_info,
     switch (c) {
     case 'W':
     case 'w':
+    case ARROW_UP:
       return MOVE_UP;
     case 'S':
     case 's':
+    case ARROW_DOWN:
       return MOVE_DOWN;
     case 'D':
     case 'd':
+    case ARROW_RIGHT:
       return MOVE_RIGHT;
     case 'A':
     case 'a':
+    case ARROW_LEFT:
       return MOVE_LEFT;
     case 'K':
     case 'k':
+    case ' ':
       return SHOOT;
     default:
       return UNKNOWN_INPUT;

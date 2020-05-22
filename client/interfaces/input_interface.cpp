@@ -38,6 +38,19 @@ int InputInterface::ParseLetter(const char letter) {
             return DEL_KEY;
           }
         }
+      } else {
+        switch (seq[1]) {
+        case 'A':
+          return ARROW_UP;
+        case 'B':
+          return ARROW_DOWN;
+        case 'C':
+          return ARROW_RIGHT;
+        case 'D':
+          return ARROW_LEFT;
+        default:
+          return '\x1b';
+        }
       }
     }
     return UNKNOWN_KEY;
